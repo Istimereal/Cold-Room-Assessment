@@ -21,6 +21,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Http/fixtures/*.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\ColdRoomAssessment.Api\ColdRoomAssessment.Api.csproj" />
     <ProjectReference Include="..\..\src\ColdRoomAssessment.Application\ColdRoomAssessment.Application.csproj" />
     <ProjectReference Include="..\..\src\ColdRoomAssessment.Infrastructure\ColdRoomAssessment.Infrastructure.csproj" />

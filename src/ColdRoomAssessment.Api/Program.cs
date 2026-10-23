@@ -1,13 +1,17 @@
+using System.Text.Json.Serialization;
 using ColdRoomAssessment.Application;
+using ColdRoomAssessment.Application.Imports;
 using ColdRoomAssessment.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddColdRoomInfrastructure(builder.Configuration);
 builder.Services.AddScoped<FacilityService>();
 builder.Services.AddScoped<EquipmentTypeService>();
 builder.Services.AddScoped<EquipmentService>();
+builder.Services.AddScoped<MeasurementImportService>();
 
 var app = builder.Build();
 

@@ -1,4 +1,5 @@
 using ColdRoomAssessment.Application;
+using ColdRoomAssessment.Application.Imports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContext<ColdRoomDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IColdRoomStore, EfColdRoomStore>();
+        services.AddScoped<IMeasurementImportStore, EfMeasurementImportStore>();
         return services;
     }
 }
