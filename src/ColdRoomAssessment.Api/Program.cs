@@ -14,6 +14,7 @@ builder.Services.AddScoped<EquipmentTypeService>();
 builder.Services.AddScoped<EquipmentService>();
 builder.Services.AddScoped<MeasurementImportService>();
 builder.Services.AddScoped<FacilityCoverageService>();
+builder.Services.AddScoped<AnalysisPeriodService>();
 
 var app = builder.Build();
 
