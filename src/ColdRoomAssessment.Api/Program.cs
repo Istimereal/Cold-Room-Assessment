@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using ColdRoomAssessment.Application;
+using ColdRoomAssessment.Application.Analysis;
 using ColdRoomAssessment.Application.Coverage;
 using ColdRoomAssessment.Application.Imports;
 using ColdRoomAssessment.Infrastructure;
@@ -16,6 +17,7 @@ builder.Services.AddScoped<MeasurementImportService>();
 builder.Services.AddScoped<FacilityCoverageService>();
 builder.Services.AddScoped<AnalysisPeriodService>();
 builder.Services.AddScoped<AnalysisDataService>();
+builder.Services.AddScoped<AnalysisService>();
 
 var app = builder.Build();
 
