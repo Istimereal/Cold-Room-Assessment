@@ -1,4 +1,5 @@
 using ColdRoomAssessment.Application;
+using ColdRoomAssessment.Application.Coverage;
 using ColdRoomAssessment.Application.Imports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IColdRoomStore, EfColdRoomStore>();
         services.AddScoped<IMeasurementImportStore, EfMeasurementImportStore>();
+        services.AddScoped<IFacilityCoverageStore, EfFacilityCoverageStore>();
         return services;
     }
 }
