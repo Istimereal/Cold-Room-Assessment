@@ -28,6 +28,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMeasurementImportStore, EfMeasurementImportStore>();
         services.AddScoped<IFacilityCoverageStore, EfFacilityCoverageStore>();
         services.AddScoped<IAnalysisPeriodStore, EfAnalysisPeriodStore>();
+        services.AddScoped<IAnalysisDataStore, EfAnalysisDataStore>();
         return services;
     }
 }
