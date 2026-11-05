@@ -8,6 +8,8 @@ public interface IColdRoomStore
 
     Task<Facility?> GetFacilityAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Facility>> ListFacilitiesAsync(CancellationToken cancellationToken);
+
     Task AddEquipmentTypeAsync(EquipmentType equipmentType, CancellationToken cancellationToken);
 
     Task<EquipmentType?> GetEquipmentTypeAsync(Guid id, CancellationToken cancellationToken);

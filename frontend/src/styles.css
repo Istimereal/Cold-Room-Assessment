@@ -1,0 +1,276 @@
+:root {
+  color: #1c2430;
+  background: #f3efe6;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  line-height: 1.45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.page {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 64px;
+}
+
+.page-header h1,
+.region h2,
+.quality h3,
+.card h3,
+.investigation h3 {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 1.15rem;
+}
+
+.quiet,
+.meta,
+.evidence-list code,
+.card-heading p {
+  color: #5c6570;
+}
+
+.quiet {
+  margin: 8px 0 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.92rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin-top: 24px;
+  padding: 16px;
+  background: #fffdf8;
+  border: 1px solid #ddd4c6;
+  border-radius: 16px;
+}
+
+.controls label {
+  display: grid;
+  gap: 6px;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.85rem;
+}
+
+.controls select,
+.controls input {
+  min-width: 220px;
+  padding: 8px 10px;
+  color: inherit;
+  background: #fff;
+  border: 1px solid #cabbab;
+  border-radius: 8px;
+}
+
+button {
+  padding: 9px 14px;
+  color: #fffdf8;
+  background: #0f6e6b;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  background: #8aa4a3;
+}
+
+.region {
+  margin-top: 28px;
+}
+
+.region h2 {
+  margin: 0 0 12px;
+  font-size: 1.4rem;
+}
+
+.quality,
+.card,
+.limitations,
+.investigation {
+  padding: 16px;
+  background: #fffdf8;
+  border: 1px solid #ddd4c6;
+  border-radius: 16px;
+}
+
+.quality {
+  margin-bottom: 16px;
+}
+
+.section-heading,
+.card-heading,
+.investigation-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-heading h3,
+.card-heading h3,
+.quality h3,
+.card h4,
+.limitations h3,
+.investigation h3 {
+  margin: 0;
+}
+
+.quality-list,
+.limitations ul,
+.evidence-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quality-list li,
+.limitations li,
+.evidence-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  padding-top: 8px;
+  border-top: 1px solid #eee6da;
+}
+
+.equipment-grid,
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.equipment-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.kind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 8px 0 0;
+}
+
+.stats div {
+  margin: 0;
+}
+
+.stats dt {
+  color: #5c6570;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.78rem;
+}
+
+.stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+details {
+  margin-top: 10px;
+}
+
+summary {
+  cursor: pointer;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.78rem;
+  border-radius: 999px;
+}
+
+.badge-complete,
+.badge-high {
+  color: #0d4f3c;
+  background: #d7f0e4;
+}
+
+.badge-incomplete,
+.badge-low {
+  color: #7a3e12;
+  background: #f8e3cf;
+}
+
+.badge-medium,
+.badge-neutral {
+  color: #1d3f73;
+  background: #d9e6f7;
+}
+
+.investigation {
+  display: grid;
+  gap: 16px;
+}
+
+.summary {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.evidence-list code {
+  font-family: "IBM Plex Mono", "Source Code Pro", ui-monospace, monospace;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  color: #8d2f2f;
+}
+
+.empty {
+  color: #5c6570;
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: min(100% - 20px, 1100px);
+    padding-top: 20px;
+  }
+
+  .controls select,
+  .controls input,
+  button {
+    width: 100%;
+  }
+}

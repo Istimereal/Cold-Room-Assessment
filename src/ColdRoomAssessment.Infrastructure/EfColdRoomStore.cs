@@ -18,6 +18,9 @@ public sealed class EfColdRoomStore(ColdRoomDbContext db) : IColdRoomStore
             .Include(facility => facility.Equipment)
             .FirstOrDefaultAsync(facility => facility.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Facility>> ListFacilitiesAsync(CancellationToken cancellationToken) =>
+        await db.Facilities.ToListAsync(cancellationToken);
+
     public async Task AddEquipmentTypeAsync(EquipmentType equipmentType, CancellationToken cancellationToken)
     {
         db.EquipmentTypes.Add(equipmentType);

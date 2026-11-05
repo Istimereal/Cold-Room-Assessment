@@ -2,6 +2,8 @@ using ColdRoomAssessment.Domain;
 
 namespace ColdRoomAssessment.Application;
 
+public sealed record FacilityListItem(Guid Id, string Name);
+
 public sealed record EquipmentSummary(Guid Id, Guid EquipmentTypeId, string Name, string Placement);
 
 public sealed record FacilityResponse(Guid Id, string Name, IReadOnlyList<EquipmentSummary> Equipment)

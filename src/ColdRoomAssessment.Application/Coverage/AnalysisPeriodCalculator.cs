@@ -2,16 +2,13 @@ namespace ColdRoomAssessment.Application.Coverage;
 
 public static class AnalysisPeriodCalculator
 {
-    private static readonly long TicksPerInterval =
-        TimeSpan.FromSeconds(MeasurementCoverageCalculator.ExpectedSamplingIntervalSeconds).Ticks;
-
     public static AnalysisCalculation Calculate(
         DateTime from,
         DateTime to,
         IReadOnlyList<DateTime> timestamps)
     {
         var storedTimes = timestamps.Distinct().OrderBy(time => time).ToArray();
-        var grid = BuildGrid(from, to);
+        var grid = ExpectedSampleGrid.Create(from, to);
         var stored = new HashSet<DateTime>(storedTimes);
         var coveredIndexes = new List<int>();
         for (var index = 0; index < grid.Count; index++)
@@ -118,23 +115,6 @@ public static class AnalysisPeriodCalculator
             complete,
             warnings,
             gaps);
-    }
-
-    private static List<DateTime> BuildGrid(DateTime from, DateTime to)
-    {
-        var grid = new List<DateTime>();
-        for (var offset = 0L; ; offset++)
-        {
-            var time = from.AddTicks(offset * TicksPerInterval);
-            if (time >= to)
-            {
-                break;
-            }
-
-            grid.Add(time);
-        }
-
-        return grid;
     }
 }
 

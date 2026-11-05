@@ -1,12 +1,17 @@
 using System.Net;
+using System.Text.Json;
 using ColdRoomAssessment.Application;
+using ColdRoomAssessment.Domain;
+using ColdRoomAssessment.Infrastructure;
 using ColdRoomAssessment.IntegrationTests.Setup;
+using Microsoft.EntityFrameworkCore;
 
 namespace ColdRoomAssessment.IntegrationTests.Http;
 
 [Collection(IntegrationCollection.Name)]
 public sealed class FacilityEndpointTests(PostgresFixture postgres) : ApiTest(postgres)
 {
+    private readonly PostgresFixture _postgres = postgres;
     [Fact]
     public async Task Create_returns_the_facility_and_get_reads_it_back()
     {
@@ -97,12 +102,47 @@ public sealed class FacilityEndpointTests(PostgresFixture postgres) : ApiTest(po
     }
 
     [Fact]
+    public async Task List_returns_id_and_name_ordered_by_name_then_id()
+    {
+        var low = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var high = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var other = Guid.Parse("00000000-0000-0000-0000-000000000010");
+        await using var db = CreateDbContext();
+        db.Facilities.AddRange(
+            new Facility { Id = other, Name = "Room B" },
+            new Facility { Id = high, Name = "room A" },
+            new Facility { Id = low, Name = "room A" });
+        await db.SaveChangesAsync();
+
+        var response = await Client.GetAsync("/api/facilities");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.EnumerateArray().ToArray();
+
+        Assert.Equal(["Room B", "room A", "room A"], items.Select(item => item.GetProperty("name").GetString()));
+        Assert.Equal([other, low, high], items.Select(item => item.GetProperty("id").GetGuid()));
+        Assert.All(items, item =>
+        {
+            var names = item.EnumerateObject().Select(property => property.Name).ToArray();
+            Assert.Equal(["id", "name"], names);
+        });
+    }
+
+    [Fact]
     public async Task Get_when_missing_returns_404()
     {
         var response = await Client.GetAsync($"/api/facilities/{Guid.CreateVersion7()}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("Facility was not found.", await response.ReadErrorAsync());
+    }
+
+    private ColdRoomDbContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ColdRoomDbContext>()
+            .UseNpgsql(_postgres.ConnectionString)
+            .Options;
+        return new ColdRoomDbContext(options);
     }
 
     private static string Location(HttpResponseMessage response)
