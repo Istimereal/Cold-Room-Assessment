@@ -29,7 +29,8 @@ select {
 .region h2,
 .quality h3,
 .card h3,
-.investigation h3 {
+.investigation h3,
+.verification h3 {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   letter-spacing: -0.02em;
 }
@@ -113,7 +114,8 @@ button:disabled {
 .quality,
 .card,
 .limitations,
-.investigation {
+.investigation,
+.verification {
   padding: 16px;
   background: #fffdf8;
   border: 1px solid #ddd4c6;
@@ -139,7 +141,8 @@ button:disabled {
 .quality h3,
 .card h4,
 .limitations h3,
-.investigation h3 {
+.investigation h3,
+.verification h3 {
   margin: 0;
 }
 
@@ -233,14 +236,60 @@ summary {
 }
 
 .badge-medium,
-.badge-neutral {
+.badge-neutral,
+.badge-partial {
   color: #1d3f73;
   background: #d9e6f7;
 }
 
-.investigation {
+.badge-supported {
+  color: #0d4f3c;
+  background: #d7f0e4;
+}
+
+.badge-unsupported {
+  color: #7a3e12;
+  background: #f8e3cf;
+}
+
+.badge-insufficient {
+  color: #3e4651;
+  background: #e6e1d8;
+}
+
+.investigation,
+.verification,
+.upload {
   display: grid;
   gap: 16px;
+}
+
+.flow {
+  margin: 12px 0 0;
+  color: #5c6570;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.95rem;
+}
+
+.upload-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0 0;
+}
+
+.upload-summary div {
+  margin: 0;
+}
+
+.upload-summary dt {
+  color: #5c6570;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.78rem;
+}
+
+.upload-summary dd {
+  margin: 0;
 }
 
 .summary {

@@ -4,6 +4,7 @@ using ColdRoomAssessment.Application.Analysis;
 using ColdRoomAssessment.Application.Coverage;
 using ColdRoomAssessment.Application.Imports;
 using ColdRoomAssessment.Application.Investigation;
+using ColdRoomAssessment.Application.Verification;
 using ColdRoomAssessment.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +21,7 @@ builder.Services.AddScoped<AnalysisPeriodService>();
 builder.Services.AddScoped<AnalysisDataService>();
 builder.Services.AddScoped<AnalysisService>();
 builder.Services.AddScoped<InvestigationService>();
+builder.Services.AddScoped<VerifierService>();
 
 var app = builder.Build();
 

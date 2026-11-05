@@ -2,6 +2,7 @@ using ColdRoomAssessment.Application;
 using ColdRoomAssessment.Application.Coverage;
 using ColdRoomAssessment.Application.Imports;
 using ColdRoomAssessment.Application.Investigation;
+using ColdRoomAssessment.Application.Verification;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,11 +33,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAnalysisPeriodStore, EfAnalysisPeriodStore>();
         services.AddScoped<IAnalysisDataStore, EfAnalysisDataStore>();
         var openAI = configuration.GetSection(OpenAIOptions.SectionName);
-        services.AddScoped<IInvestigatorClient>(_ => new OpenAIInvestigatorClient(Options.Create(new OpenAIOptions
+        var openAIOptions = new OpenAIOptions
         {
             ApiKey = openAI["ApiKey"],
-            Model = openAI["Model"]
-        })));
+            Model = openAI["Model"],
+            VerifierModel = openAI["VerifierModel"]
+        };
+        services.AddScoped<IInvestigatorClient>(_ => new OpenAIInvestigatorClient(Options.Create(openAIOptions)));
+        services.AddScoped<IVerifierClient>(_ => new OpenAIVerifierClient(Options.Create(openAIOptions)));
         return services;
     }
 }
