@@ -7,6 +7,13 @@ namespace ColdRoomAssessment.Api.Controllers;
 [Route("api/facilities")]
 public sealed class FacilitiesController(FacilityService facilities) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<FacilityListItem>>> List(CancellationToken cancellationToken)
+    {
+        var items = await facilities.ListAsync(cancellationToken);
+        return Ok(items);
+    }
+
     [HttpPost]
     public async Task<ActionResult<FacilityResponse>> Create(
         CreateFacilityRequest request,

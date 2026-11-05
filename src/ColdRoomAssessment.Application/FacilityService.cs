@@ -21,6 +21,16 @@ public sealed class FacilityService(IColdRoomStore store)
         return OperationResult<FacilityResponse>.Success(FacilityResponse.From(facility));
     }
 
+    public async Task<IReadOnlyList<FacilityListItem>> ListAsync(CancellationToken cancellationToken)
+    {
+        var facilities = await store.ListFacilitiesAsync(cancellationToken);
+        return facilities
+            .OrderBy(facility => facility.Name, StringComparer.Ordinal)
+            .ThenBy(facility => facility.Id)
+            .Select(facility => new FacilityListItem(facility.Id, facility.Name))
+            .ToArray();
+    }
+
     public async Task<OperationResult<FacilityResponse>> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var facility = await store.GetFacilityAsync(id, cancellationToken);
