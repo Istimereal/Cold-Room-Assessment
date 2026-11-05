@@ -1,12 +1,18 @@
 using System.Net;
+using System.Text.Json;
 using ColdRoomAssessment.Application;
+using ColdRoomAssessment.Domain;
+using ColdRoomAssessment.Infrastructure;
 using ColdRoomAssessment.IntegrationTests.Setup;
+using Microsoft.EntityFrameworkCore;
 
 namespace ColdRoomAssessment.IntegrationTests.Http;
 
 [Collection(IntegrationCollection.Name)]
 public sealed class EquipmentTypeEndpointTests(PostgresFixture postgres) : ApiTest(postgres)
 {
+    private readonly PostgresFixture _postgres = postgres;
+
     [Fact]
     public async Task Create_returns_the_type_and_get_reads_it_back()
     {
@@ -66,6 +72,41 @@ public sealed class EquipmentTypeEndpointTests(PostgresFixture postgres) : ApiTe
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("Equipment type was not found.", await response.ReadErrorAsync());
+    }
+
+    [Fact]
+    public async Task List_returns_id_and_name_ordered_by_name_then_id()
+    {
+        var low = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var high = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var other = Guid.Parse("00000000-0000-0000-0000-000000000010");
+        await using var db = CreateDbContext();
+        db.EquipmentTypes.AddRange(
+            new EquipmentType { Id = other, Name = "sensor" },
+            new EquipmentType { Id = high, Name = "m-type" },
+            new EquipmentType { Id = low, Name = "M-type" });
+        await db.SaveChangesAsync();
+
+        var response = await Client.GetAsync("/api/equipment-types");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.EnumerateArray().ToArray();
+
+        Assert.Equal(["M-type", "m-type", "sensor"], items.Select(item => item.GetProperty("name").GetString()));
+        Assert.Equal([low, high, other], items.Select(item => item.GetProperty("id").GetGuid()));
+        Assert.All(items, item =>
+        {
+            var names = item.EnumerateObject().Select(property => property.Name).ToArray();
+            Assert.Equal(["id", "name"], names);
+        });
+    }
+
+    private ColdRoomDbContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ColdRoomDbContext>()
+            .UseNpgsql(_postgres.ConnectionString)
+            .Options;
+        return new ColdRoomDbContext(options);
     }
 
     private static string Location(HttpResponseMessage response)

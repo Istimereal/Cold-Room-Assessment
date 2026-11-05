@@ -7,6 +7,13 @@ namespace ColdRoomAssessment.Api.Controllers;
 [Route("api/equipment-types")]
 public sealed class EquipmentTypesController(EquipmentTypeService equipmentTypes) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<EquipmentTypeResponse>>> List(CancellationToken cancellationToken)
+    {
+        var items = await equipmentTypes.ListAsync(cancellationToken);
+        return Ok(items);
+    }
+
     [HttpPost]
     public async Task<ActionResult<EquipmentTypeResponse>> Create(
         CreateEquipmentTypeRequest request,

@@ -30,6 +30,9 @@ public sealed class EfColdRoomStore(ColdRoomDbContext db) : IColdRoomStore
     public Task<EquipmentType?> GetEquipmentTypeAsync(Guid id, CancellationToken cancellationToken) =>
         db.EquipmentTypes.FirstOrDefaultAsync(equipmentType => equipmentType.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<EquipmentType>> ListEquipmentTypesAsync(CancellationToken cancellationToken) =>
+        await db.EquipmentTypes.ToListAsync(cancellationToken);
+
     public async Task AddEquipmentAsync(Equipment equipment, CancellationToken cancellationToken)
     {
         db.Equipment.Add(equipment);

@@ -33,6 +33,16 @@ public sealed class EquipmentTypeService(IColdRoomStore store)
             new EquipmentTypeResponse(equipmentType.Id, equipmentType.Name));
     }
 
+    public async Task<IReadOnlyList<EquipmentTypeResponse>> ListAsync(CancellationToken cancellationToken)
+    {
+        var equipmentTypes = await store.ListEquipmentTypesAsync(cancellationToken);
+        return equipmentTypes
+            .OrderBy(equipmentType => equipmentType.Name, StringComparer.Ordinal)
+            .ThenBy(equipmentType => equipmentType.Id)
+            .Select(equipmentType => new EquipmentTypeResponse(equipmentType.Id, equipmentType.Name))
+            .ToArray();
+    }
+
     public async Task<OperationResult<EquipmentTypeResponse>> GetAsync(
         Guid id,
         CancellationToken cancellationToken)

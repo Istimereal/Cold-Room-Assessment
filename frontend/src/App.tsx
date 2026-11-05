@@ -1,6 +1,15 @@
 import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { getAnalysis, type FacilityAnalysis } from "./api/analysis";
-import { getFacility, listFacilities, type EquipmentSummary, type FacilityListItem } from "./api/facilities";
+import { createEquipment, type Equipment } from "./api/equipment";
+import { createEquipmentType, listEquipmentTypes, type EquipmentType } from "./api/equipmentTypes";
+import {
+  createFacility,
+  getFacility,
+  listFacilities,
+  type EquipmentSummary,
+  type FacilityDetail,
+  type FacilityListItem,
+} from "./api/facilities";
 import { visibleError } from "./api/http";
 import { uploadMeasurements, type ImportSummary } from "./api/imports";
 import { runInvestigation, type FacilityInvestigation } from "./api/investigations";
@@ -10,6 +19,7 @@ import { DataQualitySummary } from "./components/DataQualitySummary";
 import { DataUpload } from "./components/DataUpload";
 import { EquipmentOverview } from "./components/EquipmentOverview";
 import { InvestigationPanel } from "./components/InvestigationPanel";
+import { SetupPanel } from "./components/SetupPanel";
 import { VerificationPanel } from "./components/VerificationPanel";
 import { normalizeTimestamp } from "./format";
 
@@ -27,6 +37,9 @@ export function App() {
   const [equipmentError, setEquipmentError] = useState<string | null>(null);
   const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [equipmentId, setEquipmentId] = useState("");
+  const [equipmentTypes, setEquipmentTypes] = useState<EquipmentType[]>([]);
+  const [equipmentTypesError, setEquipmentTypesError] = useState<string | null>(null);
+  const [equipmentTypesLoading, setEquipmentTypesLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [uploadResult, setUploadResult] = useState<ImportSummary | null>(null);
@@ -46,16 +59,24 @@ export function App() {
   const uploadRequest = useRef(0);
   const investigationRequest = useRef(0);
   const verificationRequest = useRef(0);
+  const facilitiesRequest = useRef(0);
+  const equipmentTypesRequest = useRef(0);
+  const equipmentRequest = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
+    const requestId = ++facilitiesRequest.current;
     listFacilities(controller.signal)
       .then((items) => {
+        if (requestId !== facilitiesRequest.current) {
+          return;
+        }
+
         setFacilities(items);
         setFacilitiesError(null);
       })
       .catch((error: unknown) => {
-        if (isAbort(error)) {
+        if (isAbort(error) || requestId !== facilitiesRequest.current) {
           return;
         }
 
@@ -63,7 +84,7 @@ export function App() {
         setFacilitiesError(visibleError(error, analysisFallback));
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && requestId === facilitiesRequest.current) {
           setFacilitiesLoading(false);
         }
       });
@@ -72,7 +93,37 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++equipmentTypesRequest.current;
+    listEquipmentTypes(controller.signal)
+      .then((items) => {
+        if (requestId !== equipmentTypesRequest.current) {
+          return;
+        }
+
+        setEquipmentTypes(items);
+        setEquipmentTypesError(null);
+      })
+      .catch((error: unknown) => {
+        if (isAbort(error) || requestId !== equipmentTypesRequest.current) {
+          return;
+        }
+
+        setEquipmentTypes([]);
+        setEquipmentTypesError(visibleError(error, "The equipment type list could not be loaded."));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted && requestId === equipmentTypesRequest.current) {
+          setEquipmentTypesLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
     if (facilityId.length === 0) {
+      equipmentRequest.current += 1;
       setEquipment([]);
       setEquipmentError(null);
       setEquipmentLoading(false);
@@ -80,15 +131,20 @@ export function App() {
     }
 
     const controller = new AbortController();
+    const requestId = ++equipmentRequest.current;
     setEquipmentLoading(true);
     setEquipmentError(null);
     getFacility(facilityId, controller.signal)
       .then((facility) => {
+        if (requestId !== equipmentRequest.current) {
+          return;
+        }
+
         setEquipment(facility.equipment);
         setEquipmentError(null);
       })
       .catch((error: unknown) => {
-        if (isAbort(error)) {
+        if (isAbort(error) || requestId !== equipmentRequest.current) {
           return;
         }
 
@@ -96,7 +152,7 @@ export function App() {
         setEquipmentError(visibleError(error, "The equipment list could not be loaded."));
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && requestId === equipmentRequest.current) {
           setEquipmentLoading(false);
         }
       });
@@ -165,6 +221,114 @@ export function App() {
     setInvestigationError(null);
     setInvestigationLoading(false);
     clearVerification();
+  }
+
+  async function handleCreateFacility(name: string): Promise<FacilityDetail> {
+    const created = await createFacility(name);
+    const requestId = ++facilitiesRequest.current;
+    const createdItem = { id: created.id, name: created.name };
+    try {
+      const items = await listFacilities();
+      if (requestId !== facilitiesRequest.current) {
+        return created;
+      }
+
+      setFacilities(items.some((item) => item.id === created.id) ? items : upsertByNameThenId(items, createdItem));
+      setFacilitiesError(null);
+    } catch (error: unknown) {
+      if (requestId !== facilitiesRequest.current) {
+        return created;
+      }
+
+      setFacilities((current) => upsertByNameThenId(current, createdItem));
+      setFacilitiesError(visibleError(error, analysisFallback));
+    } finally {
+      if (requestId === facilitiesRequest.current) {
+        setFacilitiesLoading(false);
+      }
+    }
+
+    if (requestId === facilitiesRequest.current) {
+      changeFacility(created.id);
+    }
+
+    return created;
+  }
+
+  async function handleCreateEquipmentType(name: string): Promise<EquipmentType> {
+    const created = await createEquipmentType(name);
+    const requestId = ++equipmentTypesRequest.current;
+    try {
+      const items = await listEquipmentTypes();
+      if (requestId !== equipmentTypesRequest.current) {
+        return created;
+      }
+
+      setEquipmentTypes(items.some((item) => item.id === created.id) ? items : upsertByNameThenId(items, created));
+      setEquipmentTypesError(null);
+    } catch (error: unknown) {
+      if (requestId !== equipmentTypesRequest.current) {
+        return created;
+      }
+
+      setEquipmentTypes((current) => upsertByNameThenId(current, created));
+      setEquipmentTypesError(visibleError(error, "The equipment type list could not be loaded."));
+    } finally {
+      if (requestId === equipmentTypesRequest.current) {
+        setEquipmentTypesLoading(false);
+      }
+    }
+
+    return created;
+  }
+
+  async function handleCreateEquipment(input: {
+    equipmentTypeId: string;
+    name: string;
+    placement: string;
+  }): Promise<Equipment> {
+    const created = await createEquipment(facilityId, {
+      equipmentTypeId: input.equipmentTypeId.length > 0 ? input.equipmentTypeId : undefined,
+      name: input.name,
+      placement: input.placement,
+    });
+    const summary: EquipmentSummary = {
+      id: created.id,
+      equipmentTypeId: created.equipmentTypeId,
+      name: created.name,
+      placement: created.placement,
+    };
+    const requestId = ++equipmentRequest.current;
+    try {
+      const facility = await getFacility(facilityId);
+      if (requestId !== equipmentRequest.current) {
+        return created;
+      }
+
+      setEquipment(
+        facility.equipment.some((item) => item.id === created.id)
+          ? facility.equipment
+          : upsertEquipment(facility.equipment, summary),
+      );
+      setEquipmentError(null);
+    } catch (error: unknown) {
+      if (requestId !== equipmentRequest.current) {
+        return created;
+      }
+
+      setEquipment((current) => upsertEquipment(current, summary));
+      setEquipmentError(visibleError(error, "The equipment list could not be loaded."));
+    } finally {
+      if (requestId === equipmentRequest.current) {
+        setEquipmentLoading(false);
+      }
+    }
+
+    if (requestId === equipmentRequest.current) {
+      changeEquipment(created.id);
+    }
+
+    return created;
   }
 
   async function upload() {
@@ -311,6 +475,7 @@ export function App() {
 
   const canVerify =
     investigation !== null && requestMatchesAnalysis && !verificationLoading && !investigationLoading;
+  const facilityName = facilities.find((item) => item.id === facilityId)?.name ?? "";
 
   return (
     <main className="page">
@@ -320,6 +485,19 @@ export function App() {
         <p className="flow">Deterministic analysis → AI Investigator → AI Verifier</p>
         <p className="quiet">ASP.NET Core · PostgreSQL · React · OpenAI</p>
       </header>
+      <section className="region setup-region" aria-labelledby="setup-heading">
+        <h2 id="setup-heading">Setup</h2>
+        <SetupPanel
+          facilityId={facilityId}
+          facilityName={facilityName}
+          equipmentTypes={equipmentTypes}
+          equipmentTypesLoading={equipmentTypesLoading}
+          equipmentTypesError={equipmentTypesError}
+          onCreateFacility={handleCreateFacility}
+          onCreateEquipmentType={handleCreateEquipmentType}
+          onCreateEquipment={handleCreateEquipment}
+        />
+      </section>
       <section className="region" aria-labelledby="upload-heading">
         <h2 id="upload-heading">Upload data</h2>
         <DataUpload
@@ -405,6 +583,30 @@ export function App() {
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function compareText(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+
+  if (left > right) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function upsertByNameThenId<T extends { id: string; name: string }>(items: readonly T[], created: T): T[] {
+  const next = [...items.filter((item) => item.id !== created.id), created];
+  next.sort((left, right) => compareText(left.name, right.name) || compareText(left.id, right.id));
+  return next;
+}
+
+function upsertEquipment(items: readonly EquipmentSummary[], created: EquipmentSummary): EquipmentSummary[] {
+  const next = [...items.filter((item) => item.id !== created.id), created];
+  next.sort((left, right) => compareText(left.name, right.name));
+  return next;
 }
 
 type BoundaryProps = { resetKey: string; children: ReactNode };

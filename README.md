@@ -20,7 +20,7 @@ CSV upload → PostgreSQL → deterministic analysis → AI Investigator → AI 
 | Application | Import, coverage, aligned samples, statistics, investigator and verifier use cases, validation |
 | Infrastructure | EF Core persistence and the OpenAI Responses clients |
 | API | HTTP endpoints and controlled error responses |
-| React | Facility and equipment selection, CSV upload, analysis, investigation, and verification |
+| React | Setup for a facility, equipment type, and equipment, then CSV upload, analysis, investigation, and verification |
 
 OpenAI SDK types stay in Infrastructure. Application defines `IInvestigatorClient` and `IVerifierClient` and sees only its own evidence catalog and result records. There is no shared “generic AI” service. The verifier is not an OpenAI hosted multi-agent workflow. It is a second request with its own instructions and schema.
 
@@ -46,7 +46,7 @@ The investigator and the verifier use the same `OpenAI:ApiKey`. `OpenAI:Model` s
 - Deterministic temperature and relative-humidity statistics for one facility and interval.
 - AI Investigator at `POST /api/facilities/{facilityId}/investigations?from&to`.
 - AI Verifier at `POST /api/facilities/{facilityId}/verifications?from&to`. The body is the investigation already returned to the UI. The API rebuilds the evidence catalog from stored measurements and does not trust a client-supplied catalog.
-- React page for upload, analysis, investigation, and verification. Investigation and verification run only from their own buttons.
+- React page to create a facility, equipment type, and equipment, then upload, analyze, investigate, and verify. Investigation and verification run only from their own buttons. Creating those records does not start analysis or AI.
 
 ## Technologies
 
@@ -112,15 +112,17 @@ Vite serves the UI at `http://localhost:5173` and proxies `/api` to `http://loca
 ## Demo workflow
 
 1. Start PostgreSQL, the API, and the frontend.
-2. Select a facility and a piece of equipment.
-3. Choose a DHT22 `.csv` file and click **Upload data**. The page shows the import summary and does not start analysis or AI.
-4. Choose an interval and click **Analyze**.
-5. Read the coverage, missing and ambiguous samples, and the temperature and humidity statistics.
-6. Click **Run AI investigation**. The analysis stays on the page.
-7. Click **Verify investigation**. The investigator text stays visible while the verifier runs.
-8. Read the overall verdict and the check beside each observation and hypothesis.
+2. In **Setup**, create a facility named `Cold Room Experiment`. The page refreshes the facility list and selects that facility. A facility is where the experiment or data belongs.
+3. Create an equipment type named `DHT22 Logger`. An equipment type is the logger or sensor model. The new type is available in the equipment form.
+4. Create equipment named `SENSOR01` with placement `Position 1`. Equipment is one concrete sensor or logger. The page refreshes the equipment for the selected facility and selects SENSOR01 in **Upload data**.
+5. Choose `SENSOR01.CSV` and click **Upload data**. The file is stored with `POST /api/equipment/{equipmentId}/imports` for the selected equipment. The file name does not choose the equipment. The page shows the import summary and does not start analysis or AI.
+6. Choose an interval and click **Analyze**.
+7. Read the coverage, missing and ambiguous samples, and the temperature and humidity statistics.
+8. Click **Run AI investigation**. The analysis stays on the page.
+9. Click **Verify investigation**. The investigator text stays visible while the verifier runs.
+10. Read the overall verdict and the check beside each observation and hypothesis.
 
-Changing the facility or the interval, uploading more data for the analyzed facility, or running a new investigation clears a previous verification. A successful upload refreshes the analysis only when an analysis is already on screen.
+Changing the facility updates the equipment selector. Changing the facility or the interval, uploading more data for the analyzed facility, or running a new investigation clears a previous verification. A successful upload refreshes the analysis only when an analysis is already on screen. Creating a facility, equipment type, or equipment does not run analysis or AI.
 
 ## Testing
 

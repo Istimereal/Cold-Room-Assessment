@@ -111,6 +111,48 @@ button:disabled {
   font-size: 1.4rem;
 }
 
+.setup-region {
+  margin-top: 18px;
+}
+
+.setup-region h2 {
+  margin-bottom: 4px;
+  font-size: 1.05rem;
+}
+
+.setup {
+  display: grid;
+  gap: 8px;
+}
+
+.setup-intro {
+  margin: 0;
+}
+
+.setup .controls {
+  margin-top: 0;
+  padding: 8px 10px;
+  gap: 8px 12px;
+  border-radius: 12px;
+}
+
+.setup .controls input,
+.setup .controls select {
+  min-width: 12rem;
+  padding: 6px 8px;
+}
+
+.setup .feedback {
+  flex: 1 1 100%;
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.85rem;
+}
+
+.success {
+  color: #0d4f3c;
+}
+
 .quality,
 .card,
 .limitations,

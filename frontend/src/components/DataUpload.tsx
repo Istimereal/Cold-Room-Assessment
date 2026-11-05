@@ -117,7 +117,10 @@ export function DataUpload({
       {equipmentReady && !equipmentError && equipment.length === 0 ? (
         <p className="quiet">This facility has no equipment.</p>
       ) : null}
-      <p className="quiet">Upload stores the file for the selected equipment. It does not run analysis or AI.</p>
+      <p className="quiet">
+        Upload stores the file on the selected equipment. The file name does not choose the equipment. Upload does not
+        run analysis or AI.
+      </p>
       {uploadLoading ? <p role="status">Uploading…</p> : null}
       {uploadResult ? <UploadSummary summary={uploadResult} /> : null}
     </div>

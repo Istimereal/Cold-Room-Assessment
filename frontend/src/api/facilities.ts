@@ -24,6 +24,19 @@ export function listFacilities(signal?: AbortSignal): Promise<FacilityListItem[]
   return request<FacilityListItem[]>("/api/facilities", { signal }, fallback);
 }
 
+export function createFacility(name: string, signal?: AbortSignal): Promise<FacilityDetail> {
+  return request<FacilityDetail>(
+    "/api/facilities",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+      signal,
+    },
+    "The facility could not be created.",
+  );
+}
+
 export function getFacility(facilityId: string, signal?: AbortSignal): Promise<FacilityDetail> {
   return request<FacilityDetail>(
     `/api/facilities/${encodeURIComponent(facilityId)}`,

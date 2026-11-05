@@ -14,6 +14,8 @@ public interface IColdRoomStore
 
     Task<EquipmentType?> GetEquipmentTypeAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<EquipmentType>> ListEquipmentTypesAsync(CancellationToken cancellationToken);
+
     Task AddEquipmentAsync(Equipment equipment, CancellationToken cancellationToken);
 
     Task<Equipment?> GetEquipmentAsync(Guid id, CancellationToken cancellationToken);
