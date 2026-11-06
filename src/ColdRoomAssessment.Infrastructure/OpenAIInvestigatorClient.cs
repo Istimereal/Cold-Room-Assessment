@@ -165,6 +165,7 @@ public sealed class OpenAIInvestigatorClient(
 
         try
         {
+            LogSerializedRequest(request);
             ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
                 request,
                 cancellationToken);
@@ -200,6 +201,87 @@ public sealed class OpenAIInvestigatorClient(
             throw new InvestigatorUnavailableException();
         }
     }
+
+    private void LogSerializedRequest(CreateResponseOptions request)
+    {
+        try
+        {
+            var payload = DescribeSerializedRequest(request);
+            logger.LogInformation(
+                "OpenAI Investigator serialized request. ContainsModel: {ContainsModel}; Model: {SerializedModel}; TopLevelProperties: {TopLevelProperties}; PayloadBytes: {PayloadBytes}",
+                payload.ContainsModel ? "True" : "False",
+                RedactSerializedModel(payload.Model),
+                payload.TopLevelProperties,
+                payload.PayloadBytes);
+        }
+        catch (Exception)
+        {
+            logger.LogInformation(
+                "OpenAI Investigator serialized request. ContainsModel: unavailable; Model: unavailable; TopLevelProperties: unavailable; PayloadBytes: unavailable");
+        }
+    }
+
+    // ResponsesClient.CreateResponseAsync posts (BinaryContent)options. That conversion uses the SDK wire serializer.
+    internal static SerializedResponsesPayload DescribeSerializedRequest(CreateResponseOptions request)
+    {
+        using BinaryContent content = request;
+        using var buffer = new MemoryStream();
+        content.WriteTo(buffer, CancellationToken.None);
+        var payloadBytes = checked((int)buffer.Length);
+        buffer.Position = 0;
+        using var document = JsonDocument.Parse(buffer);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return new SerializedResponsesPayload(false, "absent", "unavailable", payloadBytes);
+        }
+
+        var names = new List<string>();
+        var containsModel = false;
+        var model = "absent";
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            names.Add(property.Name);
+            if (!property.NameEquals("model"u8))
+            {
+                continue;
+            }
+
+            containsModel = true;
+            model = property.Value.ValueKind switch
+            {
+                JsonValueKind.String => property.Value.GetString() ?? "null",
+                JsonValueKind.Null => "null",
+                _ => "non-string"
+            };
+        }
+
+        return new SerializedResponsesPayload(containsModel, model, string.Join(',', names), payloadBytes);
+    }
+
+    private string RedactSerializedModel(string value)
+    {
+        var sanitized = value.ReplaceLineEndings(" ");
+        var apiKey = options.Value.ApiKey;
+        if (!string.IsNullOrEmpty(apiKey) && apiKey.Length >= 8)
+        {
+            sanitized = sanitized.Replace(apiKey, "[redacted]", StringComparison.Ordinal);
+        }
+
+        sanitized = SensitiveContent.Replace(sanitized, "[redacted]");
+        const int maxLength = 80;
+        if (sanitized.Length > maxLength)
+        {
+            sanitized = string.Concat(sanitized.AsSpan(0, maxLength), "…");
+        }
+
+        return sanitized;
+    }
+
+    internal readonly record struct SerializedResponsesPayload(
+        bool ContainsModel,
+        string Model,
+        string TopLevelProperties,
+        int PayloadBytes);
 
     private void LogProviderFailure(Exception exception, int? statusCode)
     {
