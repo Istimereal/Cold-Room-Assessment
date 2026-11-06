@@ -17,6 +17,7 @@ import { runVerification, type FacilityVerification } from "./api/verifications"
 import { AnalysisControls } from "./components/AnalysisControls";
 import { DataQualitySummary } from "./components/DataQualitySummary";
 import { DataUpload } from "./components/DataUpload";
+import { EventLogUpload } from "./components/EventLogUpload";
 import { EquipmentOverview } from "./components/EquipmentOverview";
 import { InvestigationPanel } from "./components/InvestigationPanel";
 import { SetupPanel } from "./components/SetupPanel";
@@ -56,6 +57,7 @@ export function App() {
   const [verification, setVerification] = useState<FacilityVerification | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(false);
+  const [includeContext, setIncludeContext] = useState(false);
   const uploadRequest = useRef(0);
   const investigationRequest = useRef(0);
   const verificationRequest = useRef(0);
@@ -420,7 +422,7 @@ export function App() {
     setInvestigation(null);
     clearVerification();
     try {
-      const result = await runInvestigation(analysis.facilityId, analysis.from, analysis.to);
+      const result = await runInvestigation(analysis.facilityId, analysis.from, analysis.to, includeContext);
       if (requestId !== investigationRequest.current) {
         return;
       }
@@ -454,6 +456,7 @@ export function App() {
         investigation.from,
         investigation.to,
         investigation,
+        includeContext,
       );
       if (requestId !== verificationRequest.current) {
         return;
@@ -519,6 +522,7 @@ export function App() {
           onFile={changeFile}
           onUpload={() => void upload()}
         />
+        <EventLogUpload facilityId={facilityId} />
       </section>
       <AnalysisControls
         facilitySelected={facilityId.length > 0}
@@ -559,6 +563,11 @@ export function App() {
             loading={investigationLoading}
             error={investigationError}
             result={investigation}
+            includeContext={includeContext}
+            onIncludeContext={(next) => {
+              setIncludeContext(next);
+              clearInvestigation();
+            }}
             onRun={() => void investigate()}
           />
         </ResultBoundary>

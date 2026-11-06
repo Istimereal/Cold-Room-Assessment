@@ -114,7 +114,8 @@ public sealed class OpenAIVerifierClient(IOptions<OpenAIOptions> options) : IVer
         EvidenceCatalog catalog,
         FacilityInvestigation investigation,
         string instructions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<ContextEvent>? contextEvents = null)
     {
         var apiKey = options.Value.ApiKey;
         var model = options.Value.ResolveVerifierModel();
@@ -136,9 +137,8 @@ public sealed class OpenAIVerifierClient(IOptions<OpenAIOptions> options) : IVer
             }
         };
         request.InputItems.Add(ResponseItem.CreateSystemMessageItem(instructions));
-        request.InputItems.Add(ResponseItem.CreateUserMessageItem(JsonSerializer.Serialize(
-            new VerifierRequest(catalog, investigation),
-            PayloadJson)));
+        request.InputItems.Add(ResponseItem.CreateUserMessageItem(
+            UserMessage(catalog, investigation, contextEvents)));
 
         try
         {
@@ -183,5 +183,25 @@ public sealed class OpenAIVerifierClient(IOptions<OpenAIOptions> options) : IVer
         return json;
     }
 
+    internal static string UserMessage(
+        EvidenceCatalog catalog,
+        FacilityInvestigation investigation,
+        IReadOnlyList<ContextEvent>? contextEvents)
+    {
+        if (contextEvents is null)
+        {
+            return JsonSerializer.Serialize(new VerifierRequest(catalog, investigation), PayloadJson);
+        }
+
+        return JsonSerializer.Serialize(
+            new VerifierContextRequest(catalog, investigation, ContextEventDocument.FromEvents(contextEvents)),
+            PayloadJson);
+    }
+
     private sealed record VerifierRequest(EvidenceCatalog DeterministicEvidence, FacilityInvestigation Investigation);
+
+    private sealed record VerifierContextRequest(
+        EvidenceCatalog DeterministicEvidence,
+        FacilityInvestigation Investigation,
+        IReadOnlyList<ContextEventDocument> ContextEvents);
 }

@@ -795,14 +795,18 @@ public sealed class FacilityInvestigationEndpointTests(PostgresFixture postgres)
 
         public Func<EvidenceCatalog, string>? Responder { get; init; }
 
+        public IReadOnlyList<ContextEvent>? ContextEvents { get; private set; }
+
         public Task<string> InvestigateAsync(
             EvidenceCatalog catalog,
             string instructions,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IReadOnlyList<ContextEvent>? contextEvents = null)
         {
             Calls++;
             Catalog = catalog;
             Instructions = instructions;
+            ContextEvents = contextEvents;
             cancellationToken.ThrowIfCancellationRequested();
             if (Exception is not null)
             {

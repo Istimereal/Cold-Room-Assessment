@@ -51,9 +51,14 @@ export function runInvestigation(
   facilityId: string,
   from: string,
   to: string,
+  includeContext = false,
   signal?: AbortSignal,
 ): Promise<FacilityInvestigation> {
   const params = new URLSearchParams({ from, to });
+  if (includeContext) {
+    params.set("includeContext", "true");
+  }
+
   return request<FacilityInvestigation>(
     `/api/facilities/${encodeURIComponent(facilityId)}/investigations?${params}`,
     { method: "POST", signal },

@@ -42,9 +42,14 @@ export function runVerification(
   from: string,
   to: string,
   investigation: FacilityInvestigation,
+  includeContext = false,
   signal?: AbortSignal,
 ): Promise<FacilityVerification> {
   const params = new URLSearchParams({ from, to });
+  if (includeContext) {
+    params.set("includeContext", "true");
+  }
+
   return request<FacilityVerification>(
     `/api/facilities/${encodeURIComponent(facilityId)}/verifications?${params}`,
     {

@@ -273,4 +273,12 @@ describe("setup flow", () => {
     expect((await within(equipmentForm).findByRole("alert")).textContent).toBe("Facility was not found.");
     expect(vi.mocked(getAnalysis)).not.toHaveBeenCalled();
   });
+
+  it("leaves room-event context off until it is chosen", async () => {
+    await renderApp();
+    const toggle = screen.getByRole("checkbox", { name: "Include known room events" }) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    const upload = screen.getByRole("button", { name: "Upload event log" }) as HTMLButtonElement;
+    expect(upload.disabled).toBe(true);
+  });
 });

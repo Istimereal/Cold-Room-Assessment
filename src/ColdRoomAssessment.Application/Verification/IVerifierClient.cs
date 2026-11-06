@@ -8,5 +8,6 @@ public interface IVerifierClient
         EvidenceCatalog catalog,
         FacilityInvestigation investigation,
         string instructions,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IReadOnlyList<ContextEvent>? contextEvents = null);
 }

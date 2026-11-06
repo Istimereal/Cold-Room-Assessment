@@ -1,15 +1,17 @@
 using ColdRoomAssessment.Application.Analysis;
+using ColdRoomAssessment.Application.Events;
 using ColdRoomAssessment.Application.Investigation;
 
 namespace ColdRoomAssessment.Application.Verification;
 
-public sealed class VerifierService(AnalysisService analysis, IVerifierClient client)
+public sealed class VerifierService(AnalysisService analysis, IRoomEventStore roomEvents, IVerifierClient client)
 {
     public async Task<OperationResult<FacilityVerification>> VerifyAsync(
         Guid facilityId,
         string? fromText,
         string? toText,
         string? investigationJson,
+        bool includeContext,
         CancellationToken cancellationToken)
     {
         var aligned = await analysis.GetAsync(facilityId, fromText, toText, cancellationToken);
@@ -28,7 +30,20 @@ public sealed class VerifierService(AnalysisService analysis, IVerifierClient cl
         }
 
         var accepted = investigation!;
-        var text = await client.VerifyAsync(catalog, accepted, VerifierInstructions.Text, cancellationToken);
+        IReadOnlyList<ContextEvent>? context = null;
+        var instructions = VerifierInstructions.Text;
+        if (includeContext)
+        {
+            var events = await roomEvents.ListOverlappingAsync(
+                facilityId,
+                facilityAnalysis.From,
+                facilityAnalysis.To,
+                cancellationToken);
+            context = events.Select(item => new ContextEvent(item.Type, item.From, item.To)).ToList();
+            instructions = VerifierInstructions.ContextText;
+        }
+
+        var text = await client.VerifyAsync(catalog, accepted, instructions, cancellationToken, context);
         if (!VerifierResultValidator.TryCreate(
                 text,
                 facilityAnalysis,

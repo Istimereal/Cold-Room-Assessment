@@ -701,7 +701,8 @@ public sealed class FacilityVerificationEndpointTests(PostgresFixture postgres) 
         public Task<string> InvestigateAsync(
             EvidenceCatalog catalog,
             string instructions,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IReadOnlyList<ContextEvent>? contextEvents = null)
         {
             Calls++;
             throw new InvalidOperationException("The verifier must not call the investigator.");
@@ -720,18 +721,22 @@ public sealed class FacilityVerificationEndpointTests(PostgresFixture postgres) 
 
         public Exception? Exception { get; init; }
 
+        public IReadOnlyList<ContextEvent>? ContextEvents { get; private set; }
+
         public Func<EvidenceCatalog, string>? Responder { get; init; }
 
         public Task<string> VerifyAsync(
             EvidenceCatalog catalog,
             FacilityInvestigation investigation,
             string instructions,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IReadOnlyList<ContextEvent>? contextEvents = null)
         {
             Calls++;
             Catalog = catalog;
             Investigation = investigation;
             Instructions = instructions;
+            ContextEvents = contextEvents;
             cancellationToken.ThrowIfCancellationRequested();
             if (Exception is not null)
             {

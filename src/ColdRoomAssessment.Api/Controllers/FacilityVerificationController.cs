@@ -14,6 +14,7 @@ public sealed class FacilityVerificationController(VerifierService verifications
         Guid facilityId,
         [FromQuery] string? from,
         [FromQuery] string? to,
+        [FromQuery] bool? includeContext,
         [FromBody] JsonElement investigation,
         CancellationToken cancellationToken)
     {
@@ -22,7 +23,13 @@ public sealed class FacilityVerificationController(VerifierService verifications
             var json = investigation.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
                 ? null
                 : investigation.GetRawText();
-            var result = await verifications.VerifyAsync(facilityId, from, to, json, cancellationToken);
+            var result = await verifications.VerifyAsync(
+                facilityId,
+                from,
+                to,
+                json,
+                includeContext.GetValueOrDefault(),
+                cancellationToken);
             return result.ToActionResult(value => Ok(value));
         }
         catch (VerifierNotConfiguredException)
