@@ -85,4 +85,26 @@ public sealed class OpenAIInvestigatorSerializationDiagnosticTests
         Assert.Equal("model,text,input,store", payload.TopLevelProperties);
         Assert.InRange(payload.PayloadBytes, 1, 20_000);
     }
+
+    [Fact]
+    public void Convenience_overload_shape_omits_store_and_still_sends_model()
+    {
+        var optionsProbe = OpenAIInvestigatorClient.DescribeSerializedRequest(
+            OpenAIInvestigatorClient.CreateMinimalProbeRequest("gpt-6-luna"));
+        var convenience = new CreateResponseOptions
+        {
+            Model = "gpt-6-luna",
+            PreviousResponseId = null
+        };
+        convenience.InputItems.Add(ResponseItem.CreateUserMessageItem(
+            "Is Denmark a member of the European Union? Answer briefly."));
+
+        var conveniencePayload = OpenAIInvestigatorClient.DescribeSerializedRequest(convenience);
+
+        Assert.Equal("model,input,store", optionsProbe.TopLevelProperties);
+        Assert.True(conveniencePayload.ContainsModel);
+        Assert.Equal("gpt-6-luna", conveniencePayload.Model);
+        Assert.Equal("model,input", conveniencePayload.TopLevelProperties);
+        Assert.DoesNotContain("store", conveniencePayload.TopLevelProperties.Split(','));
+    }
 }

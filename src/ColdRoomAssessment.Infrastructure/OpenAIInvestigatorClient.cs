@@ -171,6 +171,7 @@ public sealed class OpenAIInvestigatorClient(
                 CreateMinimalProbeRequest(model),
                 apiKey,
                 cancellationToken);
+            await ProbeConvenienceCallAsync(model, apiKey, cancellationToken);
             if (minimalSucceeded)
             {
                 await ProbeResponsesCallAsync(
@@ -246,6 +247,33 @@ public sealed class OpenAIInvestigatorClient(
         };
         request.InputItems.Add(ResponseItem.CreateUserMessageItem(ProbeQuestion));
         return request;
+    }
+
+    private async Task ProbeConvenienceCallAsync(
+        string model,
+        string apiKey,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+                model,
+                ProbeQuestion,
+                cancellationToken: cancellationToken);
+            logger.LogInformation(
+                "OpenAI Investigator minimal-convenience request. Succeeded: True; Result: {Result}",
+                ShortProbeResult(response.Value.GetOutputText()));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogInformation(
+                "OpenAI Investigator minimal-convenience request. Succeeded: False; Result: {Result}",
+                SafeProviderMessage(ex.Message));
+        }
     }
 
     private async Task<bool> ProbeResponsesCallAsync(
