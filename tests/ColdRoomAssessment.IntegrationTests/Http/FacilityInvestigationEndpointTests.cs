@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace ColdRoomAssessment.IntegrationTests.Http;
@@ -830,7 +831,9 @@ public sealed class OpenAIInvestigatorClientTests
 
         foreach (var options in cases)
         {
-            var client = new OpenAIInvestigatorClient(Options.Create(options));
+            var client = new OpenAIInvestigatorClient(
+                Options.Create(options),
+                NullLogger<OpenAIInvestigatorClient>.Instance);
             var exception = await Assert.ThrowsAsync<InvestigatorNotConfiguredException>(() =>
                 client.InvestigateAsync(catalog, InvestigatorInstructions.Text, CancellationToken.None));
             Assert.Equal("Investigator is not configured.", exception.Message);

@@ -6,6 +6,7 @@ using ColdRoomAssessment.Application.Verification;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ColdRoomAssessment.Infrastructure;
@@ -39,7 +40,9 @@ public static class InfrastructureServiceCollectionExtensions
             Model = openAI["Model"],
             VerifierModel = openAI["VerifierModel"]
         };
-        services.AddScoped<IInvestigatorClient>(_ => new OpenAIInvestigatorClient(Options.Create(openAIOptions)));
+        services.AddScoped<IInvestigatorClient>(serviceProvider => new OpenAIInvestigatorClient(
+            Options.Create(openAIOptions),
+            serviceProvider.GetRequiredService<ILogger<OpenAIInvestigatorClient>>()));
         services.AddScoped<IVerifierClient>(_ => new OpenAIVerifierClient(Options.Create(openAIOptions)));
         return services;
     }
