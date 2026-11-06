@@ -58,4 +58,31 @@ public sealed class OpenAIInvestigatorSerializationDiagnosticTests
         Assert.Contains("store", names);
         Assert.True(payload.PayloadBytes > 0);
     }
+
+    [Fact]
+    public void Minimal_probe_is_a_small_request_without_schema_or_catalog()
+    {
+        const string catalog = "SECRET-EVIDENCE-CATALOG";
+        var payload = OpenAIInvestigatorClient.DescribeSerializedRequest(
+            OpenAIInvestigatorClient.CreateMinimalProbeRequest("gpt-6-luna"));
+
+        Assert.True(payload.ContainsModel);
+        Assert.Equal("gpt-6-luna", payload.Model);
+        Assert.Equal("model,input,store", payload.TopLevelProperties);
+        Assert.InRange(payload.PayloadBytes, 1, 2_000);
+        Assert.DoesNotContain(catalog, payload.TopLevelProperties);
+        Assert.DoesNotContain(catalog, payload.Model);
+    }
+
+    [Fact]
+    public void Schema_probe_adds_strict_output_without_the_evidence_payload()
+    {
+        var payload = OpenAIInvestigatorClient.DescribeSerializedRequest(
+            OpenAIInvestigatorClient.CreateSchemaProbeRequest("gpt-6-luna"));
+
+        Assert.True(payload.ContainsModel);
+        Assert.Equal("gpt-6-luna", payload.Model);
+        Assert.Equal("model,text,input,store", payload.TopLevelProperties);
+        Assert.InRange(payload.PayloadBytes, 1, 20_000);
+    }
 }

@@ -166,6 +166,20 @@ public sealed class OpenAIInvestigatorClient(
         try
         {
             LogSerializedRequest(request);
+            var minimalSucceeded = await ProbeResponsesCallAsync(
+                "minimal",
+                CreateMinimalProbeRequest(model),
+                apiKey,
+                cancellationToken);
+            if (minimalSucceeded)
+            {
+                await ProbeResponsesCallAsync(
+                    "schema",
+                    CreateSchemaProbeRequest(model),
+                    apiKey,
+                    cancellationToken);
+            }
+
             ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
                 request,
                 cancellationToken);
@@ -200,6 +214,101 @@ public sealed class OpenAIInvestigatorClient(
             LogProviderFailure(ex, ex.StatusCode is { } status ? (int)status : null);
             throw new InvestigatorUnavailableException();
         }
+    }
+
+    private const string ProbeQuestion =
+        "Is Denmark a member of the European Union? Answer briefly.";
+
+    internal static CreateResponseOptions CreateMinimalProbeRequest(string model)
+    {
+        var request = new CreateResponseOptions
+        {
+            Model = model,
+            StoredOutputEnabled = false
+        };
+        request.InputItems.Add(ResponseItem.CreateUserMessageItem(ProbeQuestion));
+        return request;
+    }
+
+    internal static CreateResponseOptions CreateSchemaProbeRequest(string model)
+    {
+        var request = new CreateResponseOptions
+        {
+            Model = model,
+            StoredOutputEnabled = false,
+            TextOptions = new ResponseTextOptions
+            {
+                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
+                    jsonSchemaFormatName: "facility_investigation",
+                    jsonSchema: Schema,
+                    jsonSchemaIsStrict: true)
+            }
+        };
+        request.InputItems.Add(ResponseItem.CreateUserMessageItem(ProbeQuestion));
+        return request;
+    }
+
+    private async Task<bool> ProbeResponsesCallAsync(
+        string probe,
+        CreateResponseOptions request,
+        string apiKey,
+        CancellationToken cancellationToken)
+    {
+        SerializedResponsesPayload payload;
+        try
+        {
+            payload = DescribeSerializedRequest(request);
+        }
+        catch (Exception)
+        {
+            logger.LogInformation(
+                "OpenAI Investigator {Probe} request. ContainsModel: unavailable; Model: unavailable; TopLevelProperties: unavailable; PayloadBytes: unavailable; Succeeded: False; Result: unavailable",
+                probe);
+            return false;
+        }
+
+        try
+        {
+            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+                request,
+                cancellationToken);
+            logger.LogInformation(
+                "OpenAI Investigator {Probe} request. ContainsModel: {ContainsModel}; Model: {SerializedModel}; TopLevelProperties: {TopLevelProperties}; PayloadBytes: {PayloadBytes}; Succeeded: True; Result: {Result}",
+                probe,
+                payload.ContainsModel ? "True" : "False",
+                RedactSerializedModel(payload.Model),
+                payload.TopLevelProperties,
+                payload.PayloadBytes,
+                ShortProbeResult(response.Value.GetOutputText()));
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogInformation(
+                "OpenAI Investigator {Probe} request. ContainsModel: {ContainsModel}; Model: {SerializedModel}; TopLevelProperties: {TopLevelProperties}; PayloadBytes: {PayloadBytes}; Succeeded: False; Result: {Result}",
+                probe,
+                payload.ContainsModel ? "True" : "False",
+                RedactSerializedModel(payload.Model),
+                payload.TopLevelProperties,
+                payload.PayloadBytes,
+                SafeProviderMessage(ex.Message));
+            return false;
+        }
+    }
+
+    private string ShortProbeResult(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "empty";
+        }
+
+        var capped = text.Length <= 160 ? text : string.Concat(text.AsSpan(0, 160), "…");
+        return SafeProviderMessage(capped);
     }
 
     private void LogSerializedRequest(CreateResponseOptions request)
