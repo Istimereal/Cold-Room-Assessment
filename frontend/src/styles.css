@@ -178,6 +178,20 @@ button:disabled {
   justify-content: space-between;
 }
 
+.context-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.92rem;
+}
+
+.context-toggle input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
 .section-heading h3,
 .card-heading h3,
 .quality h3,

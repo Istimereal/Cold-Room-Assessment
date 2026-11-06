@@ -47,8 +47,8 @@ public sealed class EvidenceCatalog
         var items = new List<EvidenceItem>();
         foreach (var equipment in analysis.Equipment)
         {
-            AddKind(items, equipment, temperature: true, equipment.Temperature);
-            AddKind(items, equipment, temperature: false, equipment.RelativeHumidity);
+            AddKind(items, equipment, temperature: true, equipment.Temperature, equipment.TemperatureEvents);
+            AddKind(items, equipment, temperature: false, equipment.RelativeHumidity, []);
         }
 
         return new EvidenceCatalog(
@@ -63,7 +63,8 @@ public sealed class EvidenceCatalog
         List<EvidenceItem> items,
         EquipmentAnalysis equipment,
         bool temperature,
-        KindAnalysis kind)
+        KindAnalysis kind,
+        IReadOnlyList<TemperatureEvent> temperatureEvents)
     {
         var measurementKind = temperature ? "Temperature" : "RelativeHumidity";
         var slug = temperature ? "temperature" : "relative-humidity";
@@ -80,6 +81,32 @@ public sealed class EvidenceCatalog
         Add(items, equipment, measurementKind, slug, "last", Number(kind.Last), Timestamp(kind.LastAt));
         Add(items, equipment, measurementKind, slug, "change", Number(kind.Change), null);
         Add(items, equipment, measurementKind, slug, "duration-seconds", Number(kind.DurationSeconds), null);
+
+        if (temperature)
+        {
+            var rises = 0;
+            var falls = 0;
+            var stables = 0;
+            foreach (var temperatureEvent in temperatureEvents)
+            {
+                var fact = temperatureEvent.Kind switch
+                {
+                    TemperatureEventKind.Rising => $"rise:{++rises}",
+                    TemperatureEventKind.Falling => $"fall:{++falls}",
+                    _ => $"stable:{++stables}"
+                };
+                Add(
+                    items,
+                    equipment,
+                    measurementKind,
+                    slug,
+                    fact,
+                    Describe(temperatureEvent),
+                    Timestamp(temperatureEvent.From));
+            }
+
+            return;
+        }
 
         var peaks = 0;
         var dips = 0;
@@ -110,6 +137,24 @@ public sealed class EvidenceCatalog
                     Timestamp(seriesEvent.Timestamp));
             }
         }
+    }
+
+    private static string Describe(TemperatureEvent item)
+    {
+        var from = Timestamp(item.From);
+        var to = Timestamp(item.To);
+        if (item.Kind == TemperatureEventKind.Stable)
+        {
+            return $"from={from};to={to};min={Number(item.Min)};max={Number(item.Max)};mean={Number(item.Mean)};duration={Number(item.DurationSeconds)}";
+        }
+
+        return $"from={from};to={to};start={Number(item.StartValue)};end={Number(item.EndValue)};change={Signed(item.Change)};duration={Number(item.DurationSeconds)}";
+    }
+
+    private static string? Signed(double value)
+    {
+        var text = Number(value);
+        return value > 0 ? "+" + text : text;
     }
 
     private static void Add(

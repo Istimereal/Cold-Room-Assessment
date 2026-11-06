@@ -10,6 +10,8 @@ type InvestigationPanelProps = {
   loading: boolean;
   error: string | null;
   result: FacilityInvestigation | null;
+  includeContext: boolean;
+  onIncludeContext: (includeContext: boolean) => void;
   onRun: () => void;
 };
 
@@ -19,6 +21,8 @@ export function InvestigationPanel({
   loading,
   error,
   result,
+  includeContext,
+  onIncludeContext,
   onRun,
 }: InvestigationPanelProps) {
   const canRun = analysis !== null && requestMatchesAnalysis && !loading;
@@ -28,6 +32,14 @@ export function InvestigationPanel({
         <button type="button" onClick={onRun} disabled={!canRun}>
           {loading ? "Running AI investigation…" : "Run AI investigation"}
         </button>
+        <label className="context-toggle">
+          <input
+            type="checkbox"
+            checked={includeContext}
+            onChange={(event) => onIncludeContext(event.target.checked)}
+          />
+          Include known room events
+        </label>
         {!loading && analysis === null ? (
           <p className="quiet">Analyze a facility and interval first. This button is the only way to call the investigator.</p>
         ) : null}

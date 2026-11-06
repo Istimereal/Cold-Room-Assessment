@@ -1,5 +1,6 @@
 using ColdRoomAssessment.Application;
 using ColdRoomAssessment.Application.Coverage;
+using ColdRoomAssessment.Application.Events;
 using ColdRoomAssessment.Application.Imports;
 using ColdRoomAssessment.Application.Investigation;
 using ColdRoomAssessment.Application.Verification;
@@ -30,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IColdRoomStore, EfColdRoomStore>();
         services.AddScoped<IMeasurementImportStore, EfMeasurementImportStore>();
+        services.AddScoped<IRoomEventStore, EfRoomEventStore>();
         services.AddScoped<IFacilityCoverageStore, EfFacilityCoverageStore>();
         services.AddScoped<IAnalysisPeriodStore, EfAnalysisPeriodStore>();
         services.AddScoped<IAnalysisDataStore, EfAnalysisDataStore>();
@@ -38,7 +40,8 @@ public static class InfrastructureServiceCollectionExtensions
         {
             ApiKey = openAI["ApiKey"],
             Model = openAI["Model"],
-            VerifierModel = openAI["VerifierModel"]
+            VerifierModel = openAI["VerifierModel"],
+            Endpoint = openAI["Endpoint"]
         };
         services.AddScoped<IInvestigatorClient>(serviceProvider => new OpenAIInvestigatorClient(
             Options.Create(openAIOptions),

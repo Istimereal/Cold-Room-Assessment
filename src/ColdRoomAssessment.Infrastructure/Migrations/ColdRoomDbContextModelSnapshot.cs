@@ -158,6 +158,34 @@ namespace ColdRoomAssessment.Infrastructure.Migrations
                     b.ToTable("Measurements", (string)null);
                 });
 
+            modelBuilder.Entity("ColdRoomAssessment.Domain.RoomEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("From")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("To")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacilityId", "From");
+
+                    b.ToTable("RoomEvents", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RoomEvents_From_Before_Or_Equal_To", "\"From\" <= \"To\"");
+                        });
+                });
+
             modelBuilder.Entity("ColdRoomAssessment.Domain.DataImport", b =>
                 {
                     b.HasOne("ColdRoomAssessment.Domain.Equipment", "Equipment")
@@ -199,6 +227,17 @@ namespace ColdRoomAssessment.Infrastructure.Migrations
                     b.Navigation("DataImport");
                 });
 
+            modelBuilder.Entity("ColdRoomAssessment.Domain.RoomEvent", b =>
+                {
+                    b.HasOne("ColdRoomAssessment.Domain.Facility", "Facility")
+                        .WithMany("RoomEvents")
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Facility");
+                });
+
             modelBuilder.Entity("ColdRoomAssessment.Domain.DataImport", b =>
                 {
                     b.Navigation("Measurements");
@@ -217,6 +256,8 @@ namespace ColdRoomAssessment.Infrastructure.Migrations
             modelBuilder.Entity("ColdRoomAssessment.Domain.Facility", b =>
                 {
                     b.Navigation("Equipment");
+
+                    b.Navigation("RoomEvents");
                 });
 #pragma warning restore 612, 618
         }

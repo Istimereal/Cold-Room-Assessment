@@ -15,6 +15,8 @@ public sealed class ColdRoomDbContext(DbContextOptions<ColdRoomDbContext> option
 
     public DbSet<Measurement> Measurements => Set<Measurement>();
 
+    public DbSet<RoomEvent> RoomEvents => Set<RoomEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ColdRoomDbContext).Assembly);

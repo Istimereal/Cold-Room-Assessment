@@ -13,11 +13,17 @@ public sealed class FacilityInvestigationController(InvestigationService investi
         Guid facilityId,
         [FromQuery] string? from,
         [FromQuery] string? to,
+        [FromQuery] bool? includeContext,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await investigations.InvestigateAsync(facilityId, from, to, cancellationToken);
+            var result = await investigations.InvestigateAsync(
+                facilityId,
+                from,
+                to,
+                includeContext.GetValueOrDefault(),
+                cancellationToken);
             return result.ToActionResult(value => Ok(value));
         }
         catch (InvestigatorNotConfiguredException)

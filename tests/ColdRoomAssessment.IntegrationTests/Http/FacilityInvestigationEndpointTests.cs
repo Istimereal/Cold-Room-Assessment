@@ -79,18 +79,16 @@ public sealed class FacilityInvestigationEndpointTests(PostgresFixture postgres)
         Assert.Equal(25.0m, analysis.Equipment[1].CoveragePercent);
         Assert.Equal(0, analysis.Equipment[1].AmbiguousSampleCount);
         Assert.Equal(3, analysis.Equipment[1].MissingExpectedSampleCount);
-        Assert.Equal(53, fake.Catalog.Items.Count);
+        Assert.Equal(54, fake.Catalog.Items.Count);
 
         AssertKindCopied(fake.Catalog, analysis.Equipment[0], "Temperature", "temperature", analysis.Equipment[0].Temperature);
         AssertKindCopied(fake.Catalog, analysis.Equipment[0], "RelativeHumidity", "relative-humidity", analysis.Equipment[0].RelativeHumidity);
         AssertKindCopied(fake.Catalog, analysis.Equipment[1], "Temperature", "temperature", analysis.Equipment[1].Temperature);
         AssertKindCopied(fake.Catalog, analysis.Equipment[1], "RelativeHumidity", "relative-humidity", analysis.Equipment[1].RelativeHumidity);
-        Assert.Single(fake.Catalog.Items, item => item.Fact.StartsWith("peak:", StringComparison.Ordinal));
+        Assert.Contains(fake.Catalog.Items, item => item.EquipmentId == analysis.Equipment[0].EquipmentId && item.Fact == "rise:1");
+        Assert.Contains(fake.Catalog.Items, item => item.EquipmentId == analysis.Equipment[0].EquipmentId && item.Fact == "fall:1");
+        Assert.DoesNotContain(fake.Catalog.Items, item => item.Fact.StartsWith("peak:", StringComparison.Ordinal));
         Assert.DoesNotContain(fake.Catalog.Items, item => item.Fact.StartsWith("dip:", StringComparison.Ordinal));
-        Assert.DoesNotContain(
-            fake.Catalog.Items,
-            item => item.EquipmentId == analysis.Equipment[1].EquipmentId
-                && item.Fact.StartsWith("peak:", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -797,14 +795,18 @@ public sealed class FacilityInvestigationEndpointTests(PostgresFixture postgres)
 
         public Func<EvidenceCatalog, string>? Responder { get; init; }
 
+        public IReadOnlyList<ContextEvent>? ContextEvents { get; private set; }
+
         public Task<string> InvestigateAsync(
             EvidenceCatalog catalog,
             string instructions,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IReadOnlyList<ContextEvent>? contextEvents = null)
         {
             Calls++;
             Catalog = catalog;
             Instructions = instructions;
+            ContextEvents = contextEvents;
             cancellationToken.ThrowIfCancellationRequested();
             if (Exception is not null)
             {
@@ -869,7 +871,8 @@ public sealed class OpenAIInvestigatorClientTests
                     0,
                     1,
                     kind,
-                    kind)
+                    kind,
+                    [])
             ]);
     }
 }

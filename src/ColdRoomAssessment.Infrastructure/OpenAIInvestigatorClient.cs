@@ -138,7 +138,8 @@ public sealed class OpenAIInvestigatorClient(
     public async Task<string> InvestigateAsync(
         EvidenceCatalog catalog,
         string instructions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<ContextEvent>? contextEvents = null)
     {
         var apiKey = options.Value.ApiKey;
         var model = options.Value.Model;
@@ -147,28 +148,16 @@ public sealed class OpenAIInvestigatorClient(
             throw new InvestigatorNotConfiguredException();
         }
 
-        var request = new CreateResponseOptions
-        {
-            Model = model,
-            StoredOutputEnabled = false,
-            TextOptions = new ResponseTextOptions
-            {
-                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
-                    jsonSchemaFormatName: "facility_investigation",
-                    jsonSchema: Schema,
-                    jsonSchemaIsStrict: true)
-            }
-        };
-        request.InputItems.Add(ResponseItem.CreateSystemMessageItem(instructions));
-        request.InputItems.Add(ResponseItem.CreateUserMessageItem(
-            JsonSerializer.Serialize(catalog, CatalogJson)));
+        var request = InvestigationRequest(catalog, model, instructions, contextEvents);
 
         try
         {
-            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+            LogEvidenceShape(catalog, ResponsesRequestTransport.CreateRequestBody(request).Length);
+            var text = await ResponsesRequestTransport.CreateAsync(
+                options.Value,
+                apiKey,
                 request,
                 cancellationToken);
-            var text = response.Value.GetOutputText();
             if (string.IsNullOrWhiteSpace(text))
             {
                 throw new InvestigatorUnavailableException();
@@ -200,6 +189,77 @@ public sealed class OpenAIInvestigatorClient(
             throw new InvestigatorUnavailableException();
         }
     }
+
+    private void LogEvidenceShape(EvidenceCatalog catalog, int payloadBytes)
+    {
+        foreach (var equipmentId in catalog.Items.Select(item => item.EquipmentId).Distinct())
+        {
+            var temperature = catalog.Items
+                .Where(item => item.EquipmentId == equipmentId && item.MeasurementKind == "Temperature")
+                .ToList();
+            logger.LogInformation(
+                "Temperature series {EquipmentId}. ValidSamples: {ValidSamples}; Rising: {Rising}; Falling: {Falling}; Stable: {Stable}",
+                equipmentId,
+                temperature.FirstOrDefault(item => item.Fact == "count")?.Value ?? "unavailable",
+                temperature.Count(item => item.Fact.StartsWith("rise:", StringComparison.Ordinal)),
+                temperature.Count(item => item.Fact.StartsWith("fall:", StringComparison.Ordinal)),
+                temperature.Count(item => item.Fact.StartsWith("stable:", StringComparison.Ordinal)));
+        }
+
+        logger.LogInformation(
+            "Investigator evidence catalog. Items: {Items}; TemperatureEvents: {TemperatureEvents}; StablePeriods: {StablePeriods}; PayloadBytes: {PayloadBytes}",
+            catalog.Items.Count,
+            catalog.Items.Count(item =>
+                item.MeasurementKind == "Temperature"
+                && (item.Fact.StartsWith("rise:", StringComparison.Ordinal)
+                    || item.Fact.StartsWith("fall:", StringComparison.Ordinal))),
+            catalog.Items.Count(item =>
+                item.MeasurementKind == "Temperature" && item.Fact.StartsWith("stable:", StringComparison.Ordinal)),
+            payloadBytes);
+    }
+
+    internal static int InvestigationPayloadBytes(EvidenceCatalog catalog) =>
+        ResponsesRequestTransport.CreateRequestBody(
+            InvestigationRequest(catalog, "gpt-6-luna", InvestigatorInstructions.Text, contextEvents: null)).Length;
+
+    internal static string UserMessage(EvidenceCatalog catalog, IReadOnlyList<ContextEvent>? contextEvents)
+    {
+        if (contextEvents is null)
+        {
+            return JsonSerializer.Serialize(catalog, CatalogJson);
+        }
+
+        return JsonSerializer.Serialize(
+            new InvestigationContextPayload(catalog, ContextEventDocument.FromEvents(contextEvents)),
+            CatalogJson);
+    }
+
+    private static CreateResponseOptions InvestigationRequest(
+        EvidenceCatalog catalog,
+        string model,
+        string instructions,
+        IReadOnlyList<ContextEvent>? contextEvents)
+    {
+        var request = new CreateResponseOptions
+        {
+            Model = model,
+            StoredOutputEnabled = false,
+            TextOptions = new ResponseTextOptions
+            {
+                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
+                    jsonSchemaFormatName: "facility_investigation",
+                    jsonSchema: Schema,
+                    jsonSchemaIsStrict: true)
+            }
+        };
+        request.InputItems.Add(ResponseItem.CreateSystemMessageItem(instructions));
+        request.InputItems.Add(ResponseItem.CreateUserMessageItem(UserMessage(catalog, contextEvents)));
+        return request;
+    }
+
+    private sealed record InvestigationContextPayload(
+        EvidenceCatalog SensorEvidence,
+        IReadOnlyList<ContextEventDocument> ContextEvents);
 
     private void LogProviderFailure(Exception exception, int? statusCode)
     {

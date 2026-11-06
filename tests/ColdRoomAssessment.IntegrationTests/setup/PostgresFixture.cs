@@ -46,7 +46,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         await using var db = new ColdRoomDbContext(options);
         await db.Database.ExecuteSqlRawAsync(
             """
-            TRUNCATE TABLE "Measurements", "DataImports", "Equipment", "EquipmentTypes", "Facilities"
+            TRUNCATE TABLE "Measurements", "DataImports", "Equipment", "EquipmentTypes", "RoomEvents", "Facilities"
             RESTART IDENTITY CASCADE
             """);
     }

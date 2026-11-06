@@ -10,6 +10,11 @@ public sealed class OpenAIOptions
 
     public string? VerifierModel { get; set; }
 
+    /// <summary>
+    /// Optional Responses API base, including <c>/v1</c>. When blank, requests go to https://api.openai.com/v1.
+    /// </summary>
+    public string? Endpoint { get; set; }
+
     public string? ResolveVerifierModel()
     {
         if (!string.IsNullOrWhiteSpace(VerifierModel))

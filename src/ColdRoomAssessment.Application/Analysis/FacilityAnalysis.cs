@@ -25,7 +25,8 @@ public sealed record EquipmentAnalysis(
     int AmbiguousSampleCount,
     int MissingExpectedSampleCount,
     KindAnalysis Temperature,
-    KindAnalysis RelativeHumidity);
+    KindAnalysis RelativeHumidity,
+    IReadOnlyList<TemperatureEvent> TemperatureEvents);
 
 public sealed record KindAnalysis(
     int Count,
@@ -54,3 +55,22 @@ public enum SeriesEventKind
     Peak,
     Dip
 }
+
+public enum TemperatureEventKind
+{
+    Rising,
+    Falling,
+    Stable
+}
+
+public sealed record TemperatureEvent(
+    DateTime From,
+    DateTime To,
+    double StartValue,
+    double EndValue,
+    double Change,
+    double DurationSeconds,
+    TemperatureEventKind Kind,
+    double Min,
+    double Max,
+    double Mean);
