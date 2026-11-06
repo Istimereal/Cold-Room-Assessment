@@ -1,105 +1,190 @@
 # Cold Room Assessment
 
-A portfolio project for analysing cold-room DHT22 logs. It imports measurements, keeps the raw observations, makes missing and ambiguous data explicit, computes deterministic statistics, asks an AI investigator to interpret that evidence, and asks a separate AI verifier to check the investigation against the same evidence.
+Cold Room Assessment er et portfolio-projekt, jeg har lavet for at arbejde praktisk med C#, .NET og AI-assisteret softwareudvikling og AI implementering i software eller opgave løsning.
 
-This is a software-development and internship portfolio. It is not a production monitoring system, and it does not claim scientific validation of the models or of any cold room.
+Projektet tager udgangspunkt i et offentligt datasæt med temperatur- og fugtighedsmålinger fra ni DHT22-sensorer i et kølerum.
 
-## Motivation
+https://zenodo.org/records/15130001
 
-Sensor logs already support straightforward statistics. A language model can suggest observations and hypotheses, but it should not replace the measurements those claims depend on. The deterministic analysis stays inspectable. The investigator may only cite a backend evidence catalog. The verifier then checks that investigation against a catalog the backend builds again. The project is a place to practice that boundary: API design, persistence, tests, and a small UI. It does not claim that the verifier is correct, or that the models have found real faults in a room.
+## Hvad jeg især har fået ud af projektet
 
-## Architecture
+Projektet har især givet mig erfaring med nogle af de praktiske dilemmaer, der opstår, når klassisk software, sensordata og AI skal arbejde sammen.
+
+En af de vigtigste udfordringer var datamængde. Sensorerne måler hvert femte sekund, og over mange timer bliver det hurtigt til meget store datasæt. Første version af analysen producerede så mange små events, at AI-requesten blev for stor til modellens context window.
+
+Løsningen blev ikke bare at fjerne data tilfældigt. Backend gennemgår stadig de relevante målinger, men reducerer dem til mere meningsfulde facts som statistik, signifikante temperaturændringer og stabile perioder, før noget sendes til AI'en.
+
+Det gav mig især erfaring med spørgsmål som:
+
+- Hvor meget data skal behandles i backend, og hvor meget skal sendes videre?
+- Hvordan reducerer man støj uden at fjerne et vigtigt signal?
+- Hvordan laver man et evidensgrundlag, som en AI-model kan arbejde med uden at få rå data ukritisk?
+- Hvordan holder man AI-fortolkning adskilt fra deterministiske beregninger?
+- Hvordan kan en separat verifier kontrollere, om AI'ens observationer faktisk er understøttet af data?
+- Hvordan håndterer man kendt kontekst som døråbninger uden at gøre en tidsmæssig sammenhæng til en påstået årsag?
+
+Jeg har også oplevet mere almindelige integrationsproblemer undervejs, blandt andet omkring API-request-format, SDK-adfærd, databaseintegration, CSV-import og testmiljø.
+
+Det er netop den slags problemer, jeg gerne ville møde gennem projektet frem for kun at bygge en lille isoleret demo.
+
+## AI-assisteret udvikling
+
+Projektet har samtidig været et forsøg på at lære at arbejde mere systematisk med AI som udviklingsværktøj.
+
+Jeg har primært brugt Cursor som udviklingsagent, mens ChatGPT har fungeret som sparringspartner og senior-assistent til blandt andet arkitektur, debugging, review, afgrænsning og udformning af opgaver til Cursor.
+
+Jeg har derfor ikke selv skrevet hver eneste linje kode eller formuleret alle prompts alene.
+
+En del af læringen har netop været at arbejde med AI-værktøjer som en del af udviklingsprocessen: forstå forslagene, opdage fejl, stille bedre spørgsmål, afgrænse slices og kontrollere resultatet bagefter. Jeg har brugt AI mere end ønsket til at prompte cursor, planlægge slices eller opbygning af API'en. Men som start projekt, har det stadig givet lidt indblik i hvad man bør tage højde for, for at kontrollere den slags udviklingsværktøjer. Samt hvor hurtigt, selv et mindre system som dette, kan blive komplekst, selvom der er forholdsvis få data operationer.
+
+Afgrænset tid til projektet gør også at det ikke kan betegnes som et færdigt projekt. Så det er ikke rigtigt blevet belyst, om det system jeg, hovedsageligt med støtte fra AI på begge sider af prompten, har bygge, har noget til fælles, med den opsætning som det tyske forsker team har benyttet. Om AI ville kunne komme med forskellige hypoteser for hvordan data fra sensorerne i kølerummet kunne forklares, eller lignende.
+
+## Hvad systemet gør
+
+Systemet kan:
+
+- oprette faciliteter, sensortyper og sensorer
+- importere CSV-filer med temperatur- og fugtighedsmålinger
+- gemme rå observationer i PostgreSQL
+- gøre manglende og tvetydige målinger eksplicitte
+- beregne statistik og temperaturhændelser deterministisk i backend
+- importere kendte hændelser som døråbninger og flytning af produkter
+- sende et struktureret evidensgrundlag til en AI Investigator
+- lade en separat AI Verifier kontrollere Investigatorens observationer og hypoteser
+- vise analyse, AI-resultat og verificering i en React-frontend
+
+Flowet er overordnet:
 
 ```text
-CSV upload → PostgreSQL → deterministic analysis → AI Investigator → AI Verifier → React UI
+CSV-data
+   ↓
+PostgreSQL
+   ↓
+Deterministisk analyse
+   ↓
+Evidence catalog
+   ↓
+AI Investigator
+   ↓
+AI Verifier
+   ↓
+React UI
 ```
 
-| Layer | Responsibility |
-| --- | --- |
-| Domain | Facility, equipment, import, and measurement types |
-| Application | Import, coverage, aligned samples, statistics, investigator and verifier use cases, validation |
-| Infrastructure | EF Core persistence and the OpenAI Responses clients |
-| API | HTTP endpoints and controlled error responses |
-| React | Setup for a facility, equipment type, and equipment, then CSV upload, analysis, investigation, and verification |
+## Hvorfor den deterministiske analyse ligger før AI
 
-OpenAI SDK types stay in Infrastructure. Application defines `IInvestigatorClient` and `IVerifierClient` and sees only its own evidence catalog and result records. There is no shared “generic AI” service. The verifier is not an OpenAI hosted multi-agent workflow. It is a second request with its own instructions and schema.
+Sensorerne måler hvert femte sekund. Det ville være både dyrt og upraktisk bare at sende alle rå målinger direkte til en sprogmodel.
 
-The investigator and the verifier use the same `OpenAI:ApiKey`. `OpenAI:Model` selects the investigator model. `OpenAI:VerifierModel` is optional and falls back to `OpenAI:Model`, so a second key or a second dashboard setup is not required.
+Backend gennemgår derfor stadig alle relevante målinger, men reducerer dem til strukturerede facts som blandt andet:
 
-## Data semantics
+- minimum, maksimum, gennemsnit og median
+- manglende og tvetydige samples
+- signifikante temperaturstigninger og -fald
+- stabile temperaturperioder
+- tidspunkt og varighed for hændelser
 
-- Source timestamps are stored as recorded. They are not converted to UTC.
-- Analysis uses a 5-second grid over a half-open interval `[from, to)`.
-- A requested interval longer than 24 hours is rejected.
-- Missing expected samples stay missing. The analysis does not interpolate them.
-- Duplicate values at one timestamp are ambiguous. The analysis does not pick one of them.
-- Temperature and relative humidity are separate series.
-- Equipment is not averaged together.
-- The models receive a structured evidence catalog built from those statistics. They do not receive withheld experiment actions, research conclusions, or hidden labels.
+AI'en får dermed et mindre og mere kontrolleret evidensgrundlag, mens de oprindelige målinger stadig bevares.
 
-## Features
+## Investigator og Verifier
 
-- Facilities, equipment types, and equipment.
-- DHT22 CSV import at `POST /api/equipment/{equipmentId}/imports` (`multipart/form-data`, field name `file`).
-- Preserved imports and measurements in PostgreSQL.
-- Facility coverage, analysis-period coverage, and an aligned analysis dataset.
-- Deterministic temperature and relative-humidity statistics for one facility and interval.
-- AI Investigator at `POST /api/facilities/{facilityId}/investigations?from&to`.
-- AI Verifier at `POST /api/facilities/{facilityId}/verifications?from&to`. The body is the investigation already returned to the UI. The API rebuilds the evidence catalog from stored measurements and does not trust a client-supplied catalog.
-- React page to create a facility, equipment type, and equipment, then upload, analyze, investigate, and verify. Investigation and verification run only from their own buttons. Creating those records does not start analysis or AI.
+Projektet bruger OpenAI Responses API til to separate AI-komponenter.
 
-## Technologies
+Investigator får det evidenskatalog, backend har produceret, og forsøger at finde observationer og mulige forklaringer.
 
-Versions below are the ones this repository builds with.
+Verifier får derefter Investigatorens resultat og kontrollerer det mod et nyt evidenskatalog, som backend bygger fra de lagrede målinger.
 
-- .NET 10 (`net10.0`) and ASP.NET Core
-- Entity Framework Core 10.0.13
-- PostgreSQL 17 (`postgres:17` in Docker Compose) and Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3
-- xUnit 2.9.3 and Testcontainers.PostgreSql 4.16.0
-- OpenAI .NET SDK 2.14.0, using the Responses API with a strict JSON schema
-- React 19.2 and TypeScript 5.9
-- Vite 7.1
+Verifieren kan eksempelvis vurdere en påstand som:
+
+- supported
+- partially supported
+- unsupported
+
+Formålet er ikke at bevise, at modellen har ret. Formålet er at gøre AI-output mere gennemsigtigt og knytte påstande til konkrete data.
+
+Kendte hændelser som døråbninger og flytning af produkter kan tilføjes som kontekst. De holdes adskilt fra selve sensormålingerne, så systemet også kan køres uden denne viden.
+
+## Teknologier
+
+Projektet bruger blandt andet:
+
+- C# / .NET 10
+- ASP.NET Core
+- Entity Framework Core
+- PostgreSQL
 - Docker Compose
+- React
+- TypeScript
+- Vite
+- OpenAI Responses API
+- xUnit
+- Testcontainers
+- Cursor
 
-## Prerequisites
+## Datagrundlag
+
+Projektet bruger det offentlige datasæt:
+
+Temperature and Humidity Time Series of Cold Storage Room Monitoring
+
+Datasættet indeholder målinger fra ni DHT22-sensorer i et kølerum med en samplingrate på fem sekunder samt registrerede eksperimenthændelser som døråbninger og flytning af produkter.
+
+Forskningsdatasættet bruges som realistisk input til softwareprojektet. Dette projekt forsøger ikke at reproducere eller erstatte forskernes videnskabelige metode.
+
+## Begrænsninger
+
+Cold Room Assessment er et portfolio- og læringsprojekt.
+
+Det er ikke:
+
+- et valideret fødevaresikkerhedssystem
+- et produktionsklart alarmsystem
+- en videnskabeligt valideret analysemodel
+- et bevis på, at AI'ens observationer eller hypoteser er korrekte
+
+AI-output skal betragtes som fortolkning af det evidensgrundlag, systemet giver modellen.
+
+## Kør projektet lokalt
+
+### Krav
 
 - .NET 10 SDK
-- Docker, for PostgreSQL and for the backend integration tests
-- Node.js and npm, for the frontend
-- An OpenAI API key only if you want the investigator or verifier. Import and deterministic analysis do not call OpenAI.
+- Docker
+- Node.js og npm
+- en OpenAI API-nøgle, hvis Investigator og Verifier skal bruges
 
-## Run locally
+### Database
 
 ```bash
-git clone https://github.com/Istimereal/Cold-Room-Assessment.git
-cd Cold-Room-Assessment
 docker compose up -d
-dotnet ef database update --project src/ColdRoomAssessment.Infrastructure --startup-project src/ColdRoomAssessment.Api
+
+dotnet ef database update \
+  --project src/ColdRoomAssessment.Infrastructure \
+  --startup-project src/ColdRoomAssessment.Api
 ```
 
-`dotnet ef` comes from the EF Core tools. The design-time factory and `appsettings.Development.json` both target the Compose database: host `localhost`, port `5432`, database `coldroom`, user `coldroom`, password `coldroom`.
+### OpenAI
 
-Store the OpenAI settings with [user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets). Do not put a real key in appsettings or in git. The project already has a user-secrets id. The placeholders below are not a key.
+API-nøglen bør gemmes med .NET User Secrets og ikke lægges i repository:
 
 ```bash
-dotnet user-secrets init --project src/ColdRoomAssessment.Api
-dotnet user-secrets set "OpenAI:ApiKey" "<YOUR_API_KEY>" --project src/ColdRoomAssessment.Api
-dotnet user-secrets set "OpenAI:Model" "<MODEL_NAME>" --project src/ColdRoomAssessment.Api
+dotnet user-secrets set "OpenAI:ApiKey" "<YOUR_API_KEY>" \
+  --project src/ColdRoomAssessment.Api
+
+dotnet user-secrets set "OpenAI:Model" "<MODEL_NAME>" \
+  --project src/ColdRoomAssessment.Api
 ```
 
-Optional. When it is omitted or blank, the verifier uses `OpenAI:Model`.
-
-```bash
-dotnet user-secrets set "OpenAI:VerifierModel" "<MODEL_NAME>" --project src/ColdRoomAssessment.Api
-```
-
-Start the API. The launch profile listens on `http://localhost:5080`.
+### Backend
 
 ```bash
 dotnet run --project src/ColdRoomAssessment.Api
 ```
 
-Start the frontend:
+API'et kører som standard på:
+
+http://localhost:5080
+
+### Frontend
 
 ```bash
 cd frontend
@@ -107,49 +192,21 @@ npm install
 npm run dev
 ```
 
-Vite serves the UI at `http://localhost:5173` and proxies `/api` to `http://localhost:5080`. `VITE_API_BASE_URL` can override that proxy, but the dev setup does not need it.
+Frontend kører som standard på:
 
-## Demo workflow
+http://localhost:5173
 
-1. Start PostgreSQL, the API, and the frontend.
-2. In **Setup**, create a facility named `Cold Room Experiment`. The page refreshes the facility list and selects that facility. A facility is where the experiment or data belongs.
-3. Create an equipment type named `DHT22 Logger`. An equipment type is the logger or sensor model. The new type is available in the equipment form.
-4. Create equipment named `SENSOR01` with placement `Position 1`. Equipment is one concrete sensor or logger. The page refreshes the equipment for the selected facility and selects SENSOR01 in **Upload data**.
-5. Choose `SENSOR01.CSV` and click **Upload data**. The file is stored with `POST /api/equipment/{equipmentId}/imports` for the selected equipment. The file name does not choose the equipment. The page shows the import summary and does not start analysis or AI.
-6. Choose an interval and click **Analyze**.
-7. Read the coverage, missing and ambiguous samples, and the temperature and humidity statistics.
-8. Click **Run AI investigation**. The analysis stays on the page.
-9. Click **Verify investigation**. The investigator text stays visible while the verifier runs.
-10. Read the overall verdict and the check beside each observation and hypothesis.
+### Tests
 
-Changing the facility updates the equipment selector. Changing the facility or the interval, uploading more data for the analyzed facility, or running a new investigation clears a previous verification. A successful upload refreshes the analysis only when an analysis is already on screen. Creating a facility, equipment type, or equipment does not run analysis or AI.
-
-## Testing
-
-Backend integration tests use PostgreSQL through Testcontainers. Investigator and verifier tests replace the OpenAI clients with fakes. They do not call the live API.
+Backend:
 
 ```bash
 dotnet test tests/ColdRoomAssessment.IntegrationTests/ColdRoomAssessment.IntegrationTests.csproj
 ```
 
-Frontend production build:
+Frontend:
 
 ```bash
 cd frontend
-npm install
 npm run build
 ```
-
-## Security
-
-The OpenAI key stays on the server. The React app never receives it and never calls OpenAI itself. Configuration belongs in user secrets or another secret store outside the repository. This repo does not commit an API key. Error responses use fixed messages. They do not include the key, a stack trace, or the raw provider body.
-
-The local database password in Compose and `appsettings.Development.json` is for that local database only.
-
-## Conclusions
-
-The useful part of this slice is that the AI steps stay inspectable. Missing and ambiguous samples remain visible instead of being filled in. Claims point at evidence ids the backend created. The investigator proposes a reading of that evidence. The verifier checks that reading and can say the evidence is missing, conflicting, or simply insufficient. Deterministic statistics are repeatable. The model output is not, and a passing verification is not a guarantee that the conclusion is true.
-
-## Future work
-
-Charts, an evaluator that compares an investigation with findings withheld from the model, deployment, authentication, and support for more sensors or live ingestion are out of scope for this slice.
