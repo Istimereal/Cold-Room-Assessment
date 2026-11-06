@@ -66,6 +66,27 @@ public sealed class MeasurementImportEndpointTests(PostgresFixture postgres) : A
     }
 
     [Fact]
+    public async Task Import_accepts_the_real_temperature_and_humidity_header()
+    {
+        var equipment = await CreateEquipmentAsync();
+
+        var response = await ImportFixtureAsync(equipment.Id, "real-header-dht22.csv", "raw.csv");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var summary = await ReadSummaryAsync(response);
+        Assert.Equal(1, summary.ValidRowCount);
+        Assert.Equal(0, summary.InvalidRowCount);
+        Assert.Equal(2, summary.MeasurementCount);
+        Assert.Equal(new DateTime(2024, 9, 2, 9, 26, 30), summary.FirstMeasurementAt);
+        Assert.Equal(new DateTime(2024, 9, 2, 9, 26, 30), summary.LastMeasurementAt);
+
+        await using var db = CreateDbContext();
+        var measurements = await db.Measurements.ToListAsync();
+        AssertMeasurement(measurements, new DateTime(2024, 9, 2, 9, 26, 30), MeasurementKind.Temperature, 21.40, "°C");
+        AssertMeasurement(measurements, new DateTime(2024, 9, 2, 9, 26, 30), MeasurementKind.RelativeHumidity, 57.40, "%");
+    }
+
+    [Fact]
     public async Task Import_accepts_comma_and_dot_as_decimal_separators()
     {
         var equipment = await CreateEquipmentAsync();
@@ -342,6 +363,23 @@ public sealed class Dht22LogParserTests
     }
 
     [Fact]
+    public void Parse_accepts_the_real_temperature_and_humidity_header()
+    {
+        var parsed = Dht22LogParser.Parse(
+            """
+            Date;Time;Temperature (C);Humidity (%)
+            02.09.2024;09:26:30;21.40;57.40
+            """);
+
+        Assert.True(parsed.FormatRecognized);
+        Assert.Equal(0, parsed.InvalidRowCount);
+        var row = Assert.Single(parsed.Rows);
+        Assert.Equal(new DateTime(2024, 9, 2, 9, 26, 30, DateTimeKind.Unspecified), row.MeasuredAt);
+        Assert.Equal(21.40, row.Temperature);
+        Assert.Equal(57.40, row.Humidity);
+    }
+
+    [Fact]
     public void Parse_skips_blank_lines_and_repeated_headers()
     {
         var parsed = Dht22LogParser.Parse(
@@ -349,6 +387,7 @@ public sealed class Dht22LogParserTests
             before
             Date;Time;Temperature;Humidity
 
+            Date;Time;Temperature (C);Humidity (%)
             Date;Time;Temperature;Humidity
             01.01.2024;00:00:00;1,234;2
             """);

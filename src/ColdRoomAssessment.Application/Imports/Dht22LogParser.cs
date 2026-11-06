@@ -4,7 +4,13 @@ namespace ColdRoomAssessment.Application.Imports;
 
 public static class Dht22LogParser
 {
-    private static readonly string[] Header = ["Date", "Time", "Temperature", "Humidity"];
+    private const int FieldCount = 4;
+
+    private static readonly string[][] Headers =
+    [
+        ["Date", "Time", "Temperature", "Humidity"],
+        ["Date", "Time", "Temperature (C)", "Humidity (%)"],
+    ];
 
     public static Dht22LogParseResult Parse(string text)
     {
@@ -41,14 +47,27 @@ public static class Dht22LogParser
 
     private static bool IsHeader(string[] fields)
     {
-        if (fields.Length != Header.Length)
+        if (fields.Length != FieldCount)
         {
             return false;
         }
 
-        for (var index = 0; index < Header.Length; index++)
+        foreach (var header in Headers)
         {
-            if (!string.Equals(fields[index].Trim(), Header[index], StringComparison.Ordinal))
+            if (MatchesHeader(fields, header))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool MatchesHeader(string[] fields, string[] header)
+    {
+        for (var index = 0; index < header.Length; index++)
+        {
+            if (!string.Equals(fields[index].Trim(), header[index], StringComparison.Ordinal))
             {
                 return false;
             }
@@ -60,7 +79,7 @@ public static class Dht22LogParser
     private static bool TryParseRow(string[] fields, out Dht22LogRow row)
     {
         row = null!;
-        if (fields.Length != Header.Length)
+        if (fields.Length != FieldCount)
         {
             return false;
         }
