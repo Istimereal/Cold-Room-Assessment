@@ -11,7 +11,7 @@ public sealed class OpenAIOptions
     public string? VerifierModel { get; set; }
 
     /// <summary>
-    /// Optional Responses API base URI, including <c>/v1</c>. When blank, the SDK default is used.
+    /// Optional Responses API base, including <c>/v1</c>. When blank, requests go to https://api.openai.com/v1.
     /// </summary>
     public string? Endpoint { get; set; }
 
