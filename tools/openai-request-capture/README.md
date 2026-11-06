@@ -34,27 +34,22 @@ dotnet user-secrets set "OpenAI:Endpoint" "http://localhost:5099/v1" --project s
 dotnet run --project src/ColdRoomAssessment.Api
 ```
 
-`OpenAI:ApiKey` and `OpenAI:Model` stay as they are. A blank or missing `OpenAI:Endpoint` keeps the default `https://api.openai.com/v1`. This override is only used by the investigator client. The verifier is unchanged.
+`OpenAI:ApiKey` and `OpenAI:Model` stay as they are. A blank or missing `OpenAI:Endpoint` keeps the default `https://api.openai.com/v1`. The investigator and the verifier both use this base URI.
 
-## Run one minimal SDK request
+## Run one investigation
 
-Trigger one facility investigation from the app. The investigator sends the minimal options probe first. The capture terminal prints a `CAPTURE` block for it:
+Trigger one facility investigation from the app. The capture terminal prints one `CAPTURE` block for that request:
 
 ```text
 Method: POST
 Path: /v1/responses
-HttpVersion: HTTP/1.1
 Content-Type: application/json
-Content-Length: 181
-Transfer-Encoding: absent
-Expect: absent
 Authorization: present
-TopLevelProperties: model,input,store
+TopLevelProperties: model,text,input,store
 Model: gpt-6-luna
-BodyBytes: 181
 ```
 
-The body begins with `{"model":"gpt-6-luna"` and ends with `"store":false}`. The next block is the convenience overload: `Content-Length: 167`, `TopLevelProperties: model,input`, and no `"store"` property. The investigator log reports those calls as failed because `{"status":"captured"}` is not a Responses payload. That failure is expected. The raw request is in the capture terminal.
+`Content-Length` and `BodyBytes` are greater than zero. The body begins with `{"model":"gpt-6-luna"` and contains `"store":false`. The app log reports the call as failed because `{"status":"captured"}` is not a Responses payload. That failure is expected. The raw request is in the capture terminal.
 
 Remove the override when finished:
 

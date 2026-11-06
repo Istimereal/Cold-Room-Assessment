@@ -166,25 +166,11 @@ public sealed class OpenAIInvestigatorClient(
         try
         {
             LogSerializedRequest(request);
-            var minimalSucceeded = await ProbeResponsesCallAsync(
-                "minimal",
-                CreateMinimalProbeRequest(model),
+            var text = await ResponsesRequestTransport.CreateAsync(
+                options.Value,
                 apiKey,
-                cancellationToken);
-            await ProbeConvenienceCallAsync(model, apiKey, cancellationToken);
-            if (minimalSucceeded)
-            {
-                await ProbeResponsesCallAsync(
-                    "schema",
-                    CreateSchemaProbeRequest(model),
-                    apiKey,
-                    cancellationToken);
-            }
-
-            ClientResult<ResponseResult> response = await CreateResponsesClient(apiKey).CreateResponseAsync(
                 request,
                 cancellationToken);
-            var text = response.Value.GetOutputText();
             if (string.IsNullOrWhiteSpace(text))
             {
                 throw new InvestigatorUnavailableException();
@@ -217,144 +203,6 @@ public sealed class OpenAIInvestigatorClient(
         }
     }
 
-    private const string ProbeQuestion =
-        "Is Denmark a member of the European Union? Answer briefly.";
-
-    internal static CreateResponseOptions CreateMinimalProbeRequest(string model)
-    {
-        var request = new CreateResponseOptions
-        {
-            Model = model,
-            StoredOutputEnabled = false
-        };
-        request.InputItems.Add(ResponseItem.CreateUserMessageItem(ProbeQuestion));
-        return request;
-    }
-
-    internal static CreateResponseOptions CreateSchemaProbeRequest(string model)
-    {
-        var request = new CreateResponseOptions
-        {
-            Model = model,
-            StoredOutputEnabled = false,
-            TextOptions = new ResponseTextOptions
-            {
-                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
-                    jsonSchemaFormatName: "facility_investigation",
-                    jsonSchema: Schema,
-                    jsonSchemaIsStrict: true)
-            }
-        };
-        request.InputItems.Add(ResponseItem.CreateUserMessageItem(ProbeQuestion));
-        return request;
-    }
-
-    private ResponsesClient CreateResponsesClient(string apiKey)
-    {
-        var endpoint = options.Value.Endpoint;
-        if (string.IsNullOrWhiteSpace(endpoint))
-        {
-            return new ResponsesClient(apiKey);
-        }
-
-        return new ResponsesClient(
-            new ApiKeyCredential(apiKey),
-            new ResponsesClientOptions
-            {
-                Endpoint = new Uri(endpoint.Trim())
-            });
-    }
-
-    private async Task ProbeConvenienceCallAsync(
-        string model,
-        string apiKey,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            ClientResult<ResponseResult> response = await CreateResponsesClient(apiKey).CreateResponseAsync(
-                model,
-                ProbeQuestion,
-                cancellationToken: cancellationToken);
-            logger.LogInformation(
-                "OpenAI Investigator minimal-convenience request. Succeeded: True; Result: {Result}",
-                ShortProbeResult(response.Value.GetOutputText()));
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogInformation(
-                "OpenAI Investigator minimal-convenience request. Succeeded: False; Result: {Result}",
-                SafeProviderMessage(ex.Message));
-        }
-    }
-
-    private async Task<bool> ProbeResponsesCallAsync(
-        string probe,
-        CreateResponseOptions request,
-        string apiKey,
-        CancellationToken cancellationToken)
-    {
-        SerializedResponsesPayload payload;
-        try
-        {
-            payload = DescribeSerializedRequest(request);
-        }
-        catch (Exception)
-        {
-            logger.LogInformation(
-                "OpenAI Investigator {Probe} request. ContainsModel: unavailable; Model: unavailable; TopLevelProperties: unavailable; PayloadBytes: unavailable; Succeeded: False; Result: unavailable",
-                probe);
-            return false;
-        }
-
-        try
-        {
-            ClientResult<ResponseResult> response = await CreateResponsesClient(apiKey).CreateResponseAsync(
-                request,
-                cancellationToken);
-            logger.LogInformation(
-                "OpenAI Investigator {Probe} request. ContainsModel: {ContainsModel}; Model: {SerializedModel}; TopLevelProperties: {TopLevelProperties}; PayloadBytes: {PayloadBytes}; Succeeded: True; Result: {Result}",
-                probe,
-                payload.ContainsModel ? "True" : "False",
-                RedactSerializedModel(payload.Model),
-                payload.TopLevelProperties,
-                payload.PayloadBytes,
-                ShortProbeResult(response.Value.GetOutputText()));
-            return true;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogInformation(
-                "OpenAI Investigator {Probe} request. ContainsModel: {ContainsModel}; Model: {SerializedModel}; TopLevelProperties: {TopLevelProperties}; PayloadBytes: {PayloadBytes}; Succeeded: False; Result: {Result}",
-                probe,
-                payload.ContainsModel ? "True" : "False",
-                RedactSerializedModel(payload.Model),
-                payload.TopLevelProperties,
-                payload.PayloadBytes,
-                SafeProviderMessage(ex.Message));
-            return false;
-        }
-    }
-
-    private string ShortProbeResult(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return "empty";
-        }
-
-        var capped = text.Length <= 160 ? text : string.Concat(text.AsSpan(0, 160), "…");
-        return SafeProviderMessage(capped);
-    }
-
     private void LogSerializedRequest(CreateResponseOptions request)
     {
         try
@@ -374,7 +222,7 @@ public sealed class OpenAIInvestigatorClient(
         }
     }
 
-    // ResponsesClient.CreateResponseAsync posts (BinaryContent)options. That conversion uses the SDK wire serializer.
+    // The posted body is this same SDK wire serialization, written to the HTTP request as bytes.
     internal static SerializedResponsesPayload DescribeSerializedRequest(CreateResponseOptions request)
     {
         using BinaryContent content = request;

@@ -60,51 +60,19 @@ public sealed class OpenAIInvestigatorSerializationDiagnosticTests
     }
 
     [Fact]
-    public void Minimal_probe_is_a_small_request_without_schema_or_catalog()
+    public void Request_body_bytes_keep_the_model_and_store_false()
     {
-        const string catalog = "SECRET-EVIDENCE-CATALOG";
-        var payload = OpenAIInvestigatorClient.DescribeSerializedRequest(
-            OpenAIInvestigatorClient.CreateMinimalProbeRequest("gpt-6-luna"));
-
-        Assert.True(payload.ContainsModel);
-        Assert.Equal("gpt-6-luna", payload.Model);
-        Assert.Equal("model,input,store", payload.TopLevelProperties);
-        Assert.InRange(payload.PayloadBytes, 1, 2_000);
-        Assert.DoesNotContain(catalog, payload.TopLevelProperties);
-        Assert.DoesNotContain(catalog, payload.Model);
-    }
-
-    [Fact]
-    public void Schema_probe_adds_strict_output_without_the_evidence_payload()
-    {
-        var payload = OpenAIInvestigatorClient.DescribeSerializedRequest(
-            OpenAIInvestigatorClient.CreateSchemaProbeRequest("gpt-6-luna"));
-
-        Assert.True(payload.ContainsModel);
-        Assert.Equal("gpt-6-luna", payload.Model);
-        Assert.Equal("model,text,input,store", payload.TopLevelProperties);
-        Assert.InRange(payload.PayloadBytes, 1, 20_000);
-    }
-
-    [Fact]
-    public void Convenience_overload_shape_omits_store_and_still_sends_model()
-    {
-        var optionsProbe = OpenAIInvestigatorClient.DescribeSerializedRequest(
-            OpenAIInvestigatorClient.CreateMinimalProbeRequest("gpt-6-luna"));
-        var convenience = new CreateResponseOptions
+        var request = new CreateResponseOptions
         {
             Model = "gpt-6-luna",
-            PreviousResponseId = null
+            StoredOutputEnabled = false
         };
-        convenience.InputItems.Add(ResponseItem.CreateUserMessageItem(
-            "Is Denmark a member of the European Union? Answer briefly."));
+        request.InputItems.Add(ResponseItem.CreateUserMessageItem("ping"));
 
-        var conveniencePayload = OpenAIInvestigatorClient.DescribeSerializedRequest(convenience);
+        var json = System.Text.Encoding.UTF8.GetString(ResponsesRequestTransport.CreateRequestBody(request));
 
-        Assert.Equal("model,input,store", optionsProbe.TopLevelProperties);
-        Assert.True(conveniencePayload.ContainsModel);
-        Assert.Equal("gpt-6-luna", conveniencePayload.Model);
-        Assert.Equal("model,input", conveniencePayload.TopLevelProperties);
-        Assert.DoesNotContain("store", conveniencePayload.TopLevelProperties.Split(','));
+        Assert.Contains("\"model\":\"gpt-6-luna\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"store\":false", json, StringComparison.Ordinal);
+        Assert.StartsWith("{", json, StringComparison.Ordinal);
     }
 }

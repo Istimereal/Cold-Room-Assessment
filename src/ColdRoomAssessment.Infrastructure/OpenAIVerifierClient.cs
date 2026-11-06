@@ -142,10 +142,11 @@ public sealed class OpenAIVerifierClient(IOptions<OpenAIOptions> options) : IVer
 
         try
         {
-            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+            var text = await ResponsesRequestTransport.CreateAsync(
+                options.Value,
+                apiKey,
                 request,
                 cancellationToken);
-            var text = response.Value.GetOutputText();
             if (string.IsNullOrWhiteSpace(text))
             {
                 throw new VerifierUnavailableException();
