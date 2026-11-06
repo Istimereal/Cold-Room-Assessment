@@ -38,7 +38,8 @@ public static class InfrastructureServiceCollectionExtensions
         {
             ApiKey = openAI["ApiKey"],
             Model = openAI["Model"],
-            VerifierModel = openAI["VerifierModel"]
+            VerifierModel = openAI["VerifierModel"],
+            Endpoint = openAI["Endpoint"]
         };
         services.AddScoped<IInvestigatorClient>(serviceProvider => new OpenAIInvestigatorClient(
             Options.Create(openAIOptions),

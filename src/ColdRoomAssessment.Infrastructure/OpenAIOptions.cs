@@ -10,6 +10,11 @@ public sealed class OpenAIOptions
 
     public string? VerifierModel { get; set; }
 
+    /// <summary>
+    /// Optional Responses API base URI, including <c>/v1</c>. When blank, the SDK default is used.
+    /// </summary>
+    public string? Endpoint { get; set; }
+
     public string? ResolveVerifierModel()
     {
         if (!string.IsNullOrWhiteSpace(VerifierModel))

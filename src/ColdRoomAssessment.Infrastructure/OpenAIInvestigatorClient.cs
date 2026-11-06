@@ -181,7 +181,7 @@ public sealed class OpenAIInvestigatorClient(
                     cancellationToken);
             }
 
-            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+            ClientResult<ResponseResult> response = await CreateResponsesClient(apiKey).CreateResponseAsync(
                 request,
                 cancellationToken);
             var text = response.Value.GetOutputText();
@@ -249,6 +249,22 @@ public sealed class OpenAIInvestigatorClient(
         return request;
     }
 
+    private ResponsesClient CreateResponsesClient(string apiKey)
+    {
+        var endpoint = options.Value.Endpoint;
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return new ResponsesClient(apiKey);
+        }
+
+        return new ResponsesClient(
+            new ApiKeyCredential(apiKey),
+            new ResponsesClientOptions
+            {
+                Endpoint = new Uri(endpoint.Trim())
+            });
+    }
+
     private async Task ProbeConvenienceCallAsync(
         string model,
         string apiKey,
@@ -256,7 +272,7 @@ public sealed class OpenAIInvestigatorClient(
     {
         try
         {
-            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+            ClientResult<ResponseResult> response = await CreateResponsesClient(apiKey).CreateResponseAsync(
                 model,
                 ProbeQuestion,
                 cancellationToken: cancellationToken);
@@ -297,7 +313,7 @@ public sealed class OpenAIInvestigatorClient(
 
         try
         {
-            ClientResult<ResponseResult> response = await new ResponsesClient(apiKey).CreateResponseAsync(
+            ClientResult<ResponseResult> response = await CreateResponsesClient(apiKey).CreateResponseAsync(
                 request,
                 cancellationToken);
             logger.LogInformation(
