@@ -172,21 +172,29 @@ public sealed class FacilityAnalysisEndpointTests(PostgresFixture postgres) : Ap
             (At(0, 40), 10));
         var facilityId = await SeedAsync("Cold Room A", sensor);
 
-        var temperature = (await GetAnalysisAsync(facilityId, At(0, 0), At(0, 45))).Equipment[0].Temperature;
+        var equipment = (await GetAnalysisAsync(facilityId, At(0, 0), At(0, 45))).Equipment[0];
+        var temperature = equipment.Temperature;
 
         Assert.Equal(8, temperature.Count);
         Assert.Equal(100, temperature.First);
         Assert.Equal(10, temperature.Last);
         Assert.Equal(-90, temperature.Change);
         Assert.Equal(40, temperature.DurationSeconds);
+        Assert.Empty(temperature.Events);
         Assert.Equal(
             [
-                (At(0, 5), 1d, SeriesEventKind.Dip),
-                (At(0, 10), 80d, SeriesEventKind.Peak),
-                (At(0, 20), 2d, SeriesEventKind.Dip),
-                (At(0, 35), 0d, SeriesEventKind.Dip)
+                TemperatureEventKind.Falling,
+                TemperatureEventKind.Rising,
+                TemperatureEventKind.Falling,
+                TemperatureEventKind.Rising,
+                TemperatureEventKind.Falling,
+                TemperatureEventKind.Rising
             ],
-            temperature.Events.Select(item => (item.Timestamp, item.Value, item.Kind)));
+            equipment.TemperatureEvents.Select(item => item.Kind));
+        Assert.Equal(100, equipment.TemperatureEvents[0].StartValue);
+        Assert.Equal(1, equipment.TemperatureEvents[0].EndValue);
+        Assert.Equal(1, equipment.TemperatureEvents[1].StartValue);
+        Assert.Equal(80, equipment.TemperatureEvents[1].EndValue);
     }
 
     [Fact]

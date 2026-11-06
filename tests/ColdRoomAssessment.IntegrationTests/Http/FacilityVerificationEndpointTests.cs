@@ -816,7 +816,8 @@ public sealed class OpenAIVerifierClientTests
                     0,
                     1,
                     kind,
-                    kind)
+                    kind,
+                    [])
             ]);
     }
 }
