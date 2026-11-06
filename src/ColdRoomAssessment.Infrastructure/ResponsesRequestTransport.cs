@@ -25,7 +25,7 @@ internal static class ResponsesRequestTransport
     {
         var bytes = CreateRequestBody(request);
         using var message = new HttpRequestMessage(HttpMethod.Post, RequestUri(options));
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", HeaderSafeApiKey(apiKey));
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         message.Content = new ByteArrayContent(bytes);
         message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -46,6 +46,17 @@ internal static class ResponsesRequestTransport
             throw new HttpRequestException(
                 $"Responses request returned a body that was not JSON. Status {(int)response.StatusCode}.");
         }
+    }
+
+    internal static string HeaderSafeApiKey(string apiKey)
+    {
+        var key = apiKey.Trim();
+        if (key.IndexOfAny('\r', '\n', '\0') >= 0)
+        {
+            throw new InvalidOperationException("OpenAI API key contains invalid control characters.");
+        }
+
+        return key;
     }
 
     internal static byte[] CreateRequestBody(CreateResponseOptions request)
