@@ -7,3 +7,5 @@ TestResults/
 .dotnet/
 frontend/node_modules/
 frontend/dist/
+tennis-frontend/node_modules/
+tennis-frontend/dist/
